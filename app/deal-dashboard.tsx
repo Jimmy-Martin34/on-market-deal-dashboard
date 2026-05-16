@@ -93,7 +93,7 @@ export function DealDashboard({
   async function runImport() {
     setError("");
     setToast("Import submitted");
-    setCooldownUntil(Date.now() + 180000);
+    setCooldownUntil(Date.now() + 10000);
     startTransition(async () => {
       const response = await fetch("/api/manual-import", { method: "POST" });
       const body = (await response.json().catch(() => null)) as {
