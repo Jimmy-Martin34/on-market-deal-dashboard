@@ -67,7 +67,9 @@ export function normalizeIncomingProperty(raw: IncomingProperty): PropertyRecord
   const state = pick(raw, ["state", "State"]);
   const zip = pick(raw, ["zip", "zipcode", "postalCode", "Zip"]);
   const parcelId = pick(raw, ["parcelId", "parcel_id", "apn", "APN"]) || undefined;
-  const listingUrl = pick(raw, ["listingUrl", "listing_url", "url", "link"]) || undefined;
+  const listingUrl =
+    pick(raw, ["listingUrl", "listing_url", "redfinLink", "redfin_url", "url", "link"]) ||
+    undefined;
 
   if (!address && !parcelId && !listingUrl) return null;
 
@@ -90,6 +92,25 @@ export function normalizeIncomingProperty(raw: IncomingProperty): PropertyRecord
     acres: numberValue(raw.acres ?? raw.lotAcres ?? raw.lot_size_acres),
     price: numberValue(raw.price ?? raw.listPrice ?? raw.askingPrice),
     zoning: pick(raw, ["zoning", "Zoning"]) || undefined,
+    agentName:
+      pick(raw, [
+        "agentName",
+        "agent_name",
+        "listingAgent",
+        "listing_agent",
+        "brokerName",
+        "broker_name",
+      ]) || undefined,
+    agentPhone:
+      pick(raw, [
+        "agentPhone",
+        "agent_phone",
+        "listingAgentPhone",
+        "listing_agent_phone",
+        "brokerPhone",
+        "broker_phone",
+        "phone",
+      ]) || undefined,
     source: pick(raw, ["source", "Source"]) || "ActivePieces",
     notes: pick(raw, ["notes", "description", "remarks"]) || undefined,
     importedAt: now,
