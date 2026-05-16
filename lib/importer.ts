@@ -1,11 +1,12 @@
 import { extractIncomingRecords, normalizeIncomingProperty } from "./normalize";
 import { importProperties } from "./store";
 
-const DEFAULT_WEBHOOK =
-  "https://cloud.activepieces.com/api/v1/webhooks/zI8VXszh2ShSGw3W429wx";
-
 export async function triggerActivePiecesImport() {
-  const webhookUrl = process.env.ACTIVEPIECES_WEBHOOK_URL || DEFAULT_WEBHOOK;
+  const webhookUrl = process.env.ACTIVEPIECES_WEBHOOK_URL;
+  if (!webhookUrl) {
+    throw new Error("ACTIVEPIECES_WEBHOOK_URL is not configured");
+  }
+
   const response = await fetch(webhookUrl, {
     method: "POST",
     headers: {
