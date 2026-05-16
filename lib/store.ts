@@ -6,10 +6,8 @@ const STORE_KEY = "subdivide-deal-dashboard:properties";
 const LOCAL_DATA_PATH = path.join(process.cwd(), "local-data", "properties.json");
 
 async function hasRedisConfig() {
-  return Boolean(
-    (process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL) &&
-      (process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN),
-  );
+  const credentials = getRedisCredentials();
+  return Boolean(credentials.url && credentials.token);
 }
 
 async function readLocal(): Promise<PropertyRecord[]> {
@@ -29,11 +27,30 @@ async function writeLocal(records: PropertyRecord[]) {
 
 async function getRedis() {
   const { Redis } = await import("@upstash/redis");
+  const credentials = getRedisCredentials();
   return new Redis({
-    url: process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL || "",
-    token:
-      process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN || "",
+    url: credentials.url,
+    token: credentials.token,
   });
+}
+
+function getRedisCredentials() {
+  return {
+    url:
+      process.env.UPSTASH_REDIS_REST_URL ||
+      process.env.KV_REST_API_URL ||
+      process.env.UPSTASH_REDIS_REST_KV_REST_API_URL ||
+      process.env.UPSTASH_REDIS_REST_REDIS_URL ||
+      process.env.UPSTASH_REDIS_REST_KV_URL ||
+      "",
+    token:
+      process.env.UPSTASH_REDIS_REST_TOKEN ||
+      process.env.KV_REST_API_TOKEN ||
+      process.env.UPSTASH_REDIS_REST_KV_REST_API_TOKEN ||
+      process.env.UPSTASH_REDIS_REST_REDIS_TOKEN ||
+      process.env.UPSTASH_REDIS_REST_KV_REST_API_READ_ONLY_TOKEN ||
+      "",
+  };
 }
 
 async function readRedis(): Promise<PropertyRecord[]> {
