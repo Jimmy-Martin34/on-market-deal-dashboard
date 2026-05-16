@@ -47,6 +47,7 @@ export function extractIncomingRecords(payload: unknown): IncomingProperty[] {
   if (!isObject(payload)) return [];
 
   const candidates = [
+    payload.body,
     payload.properties,
     payload.records,
     payload.data,
@@ -62,18 +63,33 @@ export function extractIncomingRecords(payload: unknown): IncomingProperty[] {
 }
 
 export function normalizeIncomingProperty(raw: IncomingProperty): PropertyRecord | null {
-  const address = pick(raw, ["address", "streetAddress", "propertyAddress", "Address"]);
+  const fullAddress = pick(raw, ["address", "streetAddress", "propertyAddress", "Address"]);
+  const parsedAddress = parseFullAddress(fullAddress);
+  const address = parsedAddress.address || fullAddress;
   const city = pick(raw, ["city", "City"]);
   const state = pick(raw, ["state", "State"]);
-  const zip = pick(raw, ["zip", "zipcode", "postalCode", "Zip"]);
-  const parcelId = pick(raw, ["parcelId", "parcel_id", "apn", "APN"]) || undefined;
+  const zip = pick(raw, ["zip", "zipcode", "zipCode", "postalCode", "Zip"]);
+  const parcelId =
+    pick(raw, ["parcelId", "parcel_id", "propertyId", "property_id", "apn", "APN"]) ||
+    undefined;
   const listingUrl =
-    pick(raw, ["listingUrl", "listing_url", "redfinLink", "redfin_url", "url", "link"]) ||
+    pick(raw, [
+      "listingUrl",
+      "listing_url",
+      "propertyLink",
+      "property_link",
+      "redfinLink",
+      "redfin_url",
+      "url",
+      "link",
+    ]) ||
     undefined;
   const landPortalLink =
     pick(raw, [
       "landPortalLink",
       "land_portal_link",
+      "landVuLink",
+      "land_vu_link",
       "landPortalUrl",
       "land_portal_url",
       "landIdLink",
@@ -87,9 +103,9 @@ export function normalizeIncomingProperty(raw: IncomingProperty): PropertyRecord
   const now = new Date().toISOString();
   const base = {
     address: address || "Address unavailable",
-    city,
-    state,
-    zip,
+    city: city || parsedAddress.city,
+    state: state || parsedAddress.state,
+    zip: zip || parsedAddress.zip,
     parcelId,
     listingUrl,
     landPortalLink,
@@ -101,7 +117,7 @@ export function normalizeIncomingProperty(raw: IncomingProperty): PropertyRecord
     status: "needs_review",
     ...base,
     county: pick(raw, ["county", "County"]) || undefined,
-    acres: numberValue(raw.acres ?? raw.lotAcres ?? raw.lot_size_acres),
+    acres: numberValue(raw.acres ?? raw.acreage ?? raw.lotAcres ?? raw.lot_size_acres),
     price: numberValue(raw.price ?? raw.listPrice ?? raw.askingPrice),
     zoning: pick(raw, ["zoning", "Zoning"]) || undefined,
     agentName:
@@ -133,4 +149,21 @@ export function normalizeIncomingProperty(raw: IncomingProperty): PropertyRecord
 
 function isObject(value: unknown): value is IncomingProperty {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function parseFullAddress(value: string) {
+  const parts = value.split(",").map((part) => part.trim()).filter(Boolean);
+  const last = parts.at(-1) || "";
+  const stateZip = last.match(/\b([A-Z]{2})\s+(\d{5}(?:-\d{4})?)\b/);
+
+  if (parts.length < 2 || !stateZip) {
+    return { address: value, city: "", state: "", zip: "" };
+  }
+
+  return {
+    address: parts.slice(0, -2).join(", ") || parts[0],
+    city: parts.at(-2) || "",
+    state: stateZip[1],
+    zip: stateZip[2],
+  };
 }
