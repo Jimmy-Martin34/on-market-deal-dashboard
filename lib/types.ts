@@ -14,6 +14,8 @@ export type PropertyRecord = {
   zoning?: string;
   parcelId?: string;
   listingUrl?: string;
+  agentName?: string;
+  agentPhone?: string;
   source?: string;
   notes?: string;
   importedAt: string;
