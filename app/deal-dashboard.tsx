@@ -77,9 +77,9 @@ export function DealDashboard({
   async function runImport() {
     setError("");
     startTransition(async () => {
-      const response = await fetch("/api/cron/import-properties");
+      const response = await fetch("/api/manual-import", { method: "POST" });
       if (!response.ok) {
-        setError("Import failed. Check CRON_SECRET locally or Vercel function logs.");
+        setError("Import failed. Check Vercel function logs.");
         return;
       }
       await refreshProperties();
