@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, ExternalLink, RefreshCcw, Send, Trash2 } from "lucide-react";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import type { PropertyRecord, PropertyStatus } from "@/lib/types";
 
 type Tab = {
@@ -32,6 +32,9 @@ export function DealDashboard({
   const [activeTab, setActiveTab] = useState<PropertyStatus>("needs_review");
   const [query, setQuery] = useState("");
   const [error, setError] = useState("");
+  const [toast, setToast] = useState("");
+  const [cooldownUntil, setCooldownUntil] = useState(0);
+  const [now, setNow] = useState(Date.now());
   const [isPending, startTransition] = useTransition();
 
   const filtered = useMemo(() => {
@@ -66,6 +69,19 @@ export function DealDashboard({
   }, [properties]);
 
   const newestImport = properties[0]?.importedAt;
+  const cooldownRemaining = Math.max(0, cooldownUntil - now);
+  const importDisabled = isPending || cooldownRemaining > 0;
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!toast) return;
+    const timer = window.setTimeout(() => setToast(""), 5000);
+    return () => window.clearTimeout(timer);
+  }, [toast]);
 
   async function refreshProperties() {
     setError("");
@@ -76,13 +92,35 @@ export function DealDashboard({
 
   async function runImport() {
     setError("");
+    setToast("Import submitted");
+    setCooldownUntil(Date.now() + 180000);
     startTransition(async () => {
       const response = await fetch("/api/manual-import", { method: "POST" });
+      const body = (await response.json().catch(() => null)) as {
+        added?: number;
+        skippedDuplicates?: number;
+        records?: PropertyRecord[];
+        error?: string;
+      } | null;
+
       if (!response.ok) {
-        setError("Manual import failed. Check the /api/manual-import function logs in Vercel.");
+        setError(body?.error || "Manual import failed. Check the /api/manual-import function logs in Vercel.");
         return;
       }
-      await refreshProperties();
+
+      if (body?.records?.length) {
+        setProperties((current) => {
+          const seen = new Set(current.map((property) => property.fingerprint));
+          const fresh = body.records!.filter((property) => !seen.has(property.fingerprint));
+          return [...fresh, ...current];
+        });
+      }
+
+      setToast(
+        `Import submitted. Added ${body?.added ?? 0}, skipped ${
+          body?.skippedDuplicates ?? 0
+        } duplicates.`,
+      );
     });
   }
 
@@ -161,11 +199,13 @@ export function DealDashboard({
             </button>
             <button
               className="import-button"
-              disabled={isPending}
+              disabled={importDisabled}
               onClick={runImport}
               type="button"
             >
-              Run import
+              {cooldownRemaining > 0
+                ? `Run import (${Math.ceil(cooldownRemaining / 1000)}s)`
+                : "Run import"}
             </button>
           </div>
         </div>
@@ -258,6 +298,7 @@ export function DealDashboard({
           </div>
         )}
       </section>
+      {toast ? <div className="toast success">{toast}</div> : null}
     </main>
   );
 }
