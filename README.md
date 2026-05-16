@@ -5,25 +5,26 @@ Embeddable Next.js dashboard for newly listed vacant land properties that may be
 ## What It Does
 
 - Shows imported properties in status tabs: Needs review, Sent to CRM, Completed, and Discarded.
-- Imports records from ActivePieces on a Vercel Cron schedule.
+- Imports records from ActivePieces when new leads are posted to the dashboard webhook.
 - Deduplicates imported records before saving them.
 - Lets reviewers send a property to a CRM webhook, complete it, or discard it.
+- Refreshes the visible dashboard every 15 minutes.
 
-## Import Schedule
+## Live Import
 
-`vercel.json` schedules `/api/cron/import-properties` at:
+ActivePieces should send each new lead directly to:
 
-```json
-"0 11 * * *"
+```text
+Method: POST
+URL: https://on-market-deal-dashboard.vercel.app/api/import
+Header: Content-Type: application/json
 ```
 
-That is 6:00 a.m. fixed Eastern Standard Time, expressed in UTC. If you want clock-time Eastern with daylight saving time, change this seasonally because Vercel Cron uses UTC.
+The dashboard no longer uses a scheduled Vercel Cron import. New properties appear after ActivePieces posts them, and the iframe refreshes its data every 15 minutes.
 
 ## Required Vercel Environment Variables
 
 ```bash
-CRON_SECRET="replace-with-a-long-random-secret"
-ACTIVEPIECES_WEBHOOK_URL="replace-with-your-activepieces-webhook-url"
 CRM_WEBHOOK_URL=""
 UPSTASH_REDIS_REST_URL=""
 UPSTASH_REDIS_REST_TOKEN=""
@@ -33,23 +34,22 @@ Use the Upstash Redis integration from the Vercel Marketplace for durable produc
 
 ## ActivePieces Payloads
 
-The cron route and the `Run import` button trigger the ActivePieces webhook. Many ActivePieces flows show the final records in the run output but return only `{}` to the original webhook caller. In that case, add a final HTTP step in ActivePieces that posts the records back into the dashboard.
-
-Configure that final ActivePieces HTTP step as:
-
-```text
-Method: POST
-URL: https://on-market-deal-dashboard.vercel.app/api/import
-Header: Content-Type: application/json
-```
-
-The body can be the property array directly, or the wrapper object:
+The body can be a single property object, a property array, or a wrapper object:
 
 ```json
 {
-  "status": 200,
-  "headers": {},
-  "body": []
+  "date": "2026-05-16 16:43:30",
+  "propertyId": "201859330",
+  "address": "480 Brown Rd, Spartanburg, SC 29302",
+  "price": "$165,000",
+  "acreage": "8.2",
+  "zipCode": "29302",
+  "propertyLink": "https://www.redfin.com/SC/Spartanburg/480-Brown-Rd-29302/home/201859330",
+  "landVuLink": "",
+  "countSold": "33",
+  "subdivideEstimate": "$231,798",
+  "status": "NEW",
+  "County, St": "Spartanburg, SC"
 }
 ```
 
