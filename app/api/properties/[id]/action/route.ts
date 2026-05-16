@@ -111,7 +111,7 @@ function buildCrmPayload(property: PropertyRecord) {
       },
       {
         id: 694,
-        value: property.parcelId || property.id,
+        value: property.landPortalLink || "",
       },
     ],
   };
@@ -132,6 +132,7 @@ function buildDealNotes(property: PropertyRecord) {
     property.price ? `List price: ${property.price}` : "",
     property.zoning ? `Zoning: ${property.zoning}` : "",
     property.parcelId ? `Parcel/Land ID: ${property.parcelId}` : "",
+    property.landPortalLink ? `Land portal link: ${property.landPortalLink}` : "",
     property.listingUrl ? `On market link: ${property.listingUrl}` : "",
     property.notes ? `Notes: ${property.notes}` : "",
   ];
