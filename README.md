@@ -54,3 +54,21 @@ npm run build
 ```
 
 Open `http://localhost:3000` for the iframe-ready dashboard.
+
+## Website Embed
+
+Paste this into your website where the dashboard should appear:
+
+```html
+<div style="width: 100%; height: 900px; overflow: hidden;">
+  <iframe
+    src="https://on-market-deal-dashboard.vercel.app"
+    title="On Market Deal Dashboard"
+    style="width: 100%; height: 100%; border: 0;"
+    loading="lazy"
+    referrerpolicy="no-referrer-when-downgrade"
+  ></iframe>
+</div>
+```
+
+If Vercel gives the project a different production URL, replace the `src` value with that URL.
