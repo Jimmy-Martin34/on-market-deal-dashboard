@@ -155,7 +155,12 @@ export function DealDashboard({
         (body?.diagnostics?.normalizedRecords ?? 0) === 0
       ) {
         const firstKeys = body?.diagnostics?.extractedKeys?.[0]?.join(", ") || "none";
-        setError(`Import found data, but it did not look like property rows. First extracted keys: ${firstKeys}.`);
+        const emptyObjectMessage =
+          firstKeys === "none"
+            ? "ActivePieces responded to Vercel with an empty object. Add a final HTTP POST step in ActivePieces that sends the property array to https://on-market-deal-dashboard.vercel.app/api/import."
+            : `Import found data, but it did not look like property rows. First extracted keys: ${firstKeys}.`;
+        setError(emptyObjectMessage);
+        setImportStatus(emptyObjectMessage);
       }
     });
   }
