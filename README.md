@@ -14,10 +14,10 @@ Embeddable Next.js dashboard for newly listed vacant land properties that may be
 `vercel.json` schedules `/api/cron/import-properties` at:
 
 ```json
-"0 11,17 * * *"
+"0 11 * * *"
 ```
 
-That is 6:00 a.m. and 12:00 p.m. fixed Eastern Standard Time, expressed in UTC. If you want clock-time Eastern with daylight saving time, change this seasonally because Vercel Cron uses UTC.
+That is 6:00 a.m. fixed Eastern Standard Time, expressed in UTC. If you want clock-time Eastern with daylight saving time, change this seasonally because Vercel Cron uses UTC.
 
 ## Required Vercel Environment Variables
 
