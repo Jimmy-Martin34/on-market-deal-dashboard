@@ -23,6 +23,14 @@ const currency = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 0,
 });
 
+const dateTime = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+});
+
 export function DealDashboard({
   initialProperties,
 }: {
@@ -32,10 +40,6 @@ export function DealDashboard({
   const [activeTab, setActiveTab] = useState<PropertyStatus>("needs_review");
   const [query, setQuery] = useState("");
   const [error, setError] = useState("");
-  const [toast, setToast] = useState("");
-  const [importStatus, setImportStatus] = useState("Ready to import.");
-  const [cooldownUntil, setCooldownUntil] = useState(0);
-  const [now, setNow] = useState(Date.now());
   const [isPending, startTransition] = useTransition();
 
   const filtered = useMemo(() => {
@@ -49,8 +53,7 @@ export function DealDashboard({
         property.state,
         property.zip,
         property.county,
-        property.parcelId,
-        property.zoning,
+        property.countyState,
       ]
         .filter(Boolean)
         .join(" ")
@@ -70,99 +73,19 @@ export function DealDashboard({
   }, [properties]);
 
   const newestImport = properties[0]?.importedAt;
-  const cooldownRemaining = Math.max(0, cooldownUntil - now);
-  const importDisabled = isPending || cooldownRemaining > 0;
 
   useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    const timer = window.setInterval(() => {
+      void refreshProperties();
+    }, 15 * 60 * 1000);
     return () => window.clearInterval(timer);
   }, []);
-
-  useEffect(() => {
-    if (!toast) return;
-    const timer = window.setTimeout(() => setToast(""), 5000);
-    return () => window.clearTimeout(timer);
-  }, [toast]);
 
   async function refreshProperties() {
     setError("");
     const response = await fetch("/api/properties", { cache: "no-store" });
     const data = (await response.json()) as { properties: PropertyRecord[] };
     setProperties(data.properties);
-  }
-
-  async function runImport() {
-    setError("");
-    setToast("Import submitted");
-    setImportStatus("Import submitted. Waiting for ActivePieces response...");
-    setCooldownUntil(Date.now() + 10000);
-    startTransition(async () => {
-      const response = await fetch("/api/manual-import", { method: "POST" });
-      const body = (await response.json().catch(() => null)) as {
-        added?: number;
-        skippedDuplicates?: number;
-        records?: PropertyRecord[];
-        error?: string;
-        diagnostics?: {
-          extractedRecords?: number;
-          normalizedRecords?: number;
-          parsedPayload?: boolean;
-          responseTextLength?: number;
-          payloadKeys?: string[];
-          extractedKeys?: string[][];
-        };
-      } | null;
-
-      if (!response.ok) {
-        setError(body?.error || "Manual import failed. Check the /api/manual-import function logs in Vercel.");
-        setImportStatus(`Import failed: ${body?.error || "No error details returned."}`);
-        return;
-      }
-
-      if (body?.records?.length) {
-        setProperties((current) => {
-          const seen = new Set(current.map((property) => property.fingerprint));
-          const fresh = body.records!.filter((property) => !seen.has(property.fingerprint));
-          return [...fresh, ...current];
-        });
-      }
-
-      setToast(
-        `Import submitted. Added ${body?.added ?? 0}, skipped ${
-          body?.skippedDuplicates ?? 0
-        } duplicates. Extracted ${body?.diagnostics?.extractedRecords ?? 0}.`,
-      );
-      setImportStatus(
-        `Last import: added ${body?.added ?? 0}, skipped ${
-          body?.skippedDuplicates ?? 0
-        }, extracted ${body?.diagnostics?.extractedRecords ?? 0}, normalized ${
-          body?.diagnostics?.normalizedRecords ?? 0
-        }.`
-      );
-
-      if ((body?.added ?? 0) === 0 && (body?.diagnostics?.extractedRecords ?? 0) === 0) {
-        const diagnosticMessage = `Import ran, but Vercel did not receive property rows back from ActivePieces. Parsed: ${
-          body?.diagnostics?.parsedPayload ? "yes" : "no"
-        }, response length: ${body?.diagnostics?.responseTextLength ?? 0}, keys: ${
-          body?.diagnostics?.payloadKeys?.join(", ") || "none"
-        }.`;
-        setError(diagnosticMessage);
-        setImportStatus(diagnosticMessage);
-      }
-
-      if (
-        (body?.diagnostics?.extractedRecords ?? 0) > 0 &&
-        (body?.diagnostics?.normalizedRecords ?? 0) === 0
-      ) {
-        const firstKeys = body?.diagnostics?.extractedKeys?.[0]?.join(", ") || "none";
-        const emptyObjectMessage =
-          firstKeys === "none"
-            ? "ActivePieces responded to Vercel with an empty object. Add a final HTTP POST step in ActivePieces that sends the property array to https://on-market-deal-dashboard.vercel.app/api/import."
-            : `Import found data, but it did not look like property rows. First extracted keys: ${firstKeys}.`;
-        setError(emptyObjectMessage);
-        setImportStatus(emptyObjectMessage);
-      }
-    });
   }
 
   async function act(id: string, action: "send_to_crm" | PropertyStatus) {
@@ -197,11 +120,11 @@ export function DealDashboard({
           </div>
           <div className="sync-meta">
             <div>{properties.length} total properties</div>
-            <div>Build: manual import enabled</div>
+            <div>Live webhook mode</div>
             <div>
-              Last import:{" "}
-              {newestImport ? new Date(newestImport).toLocaleString() : "No imports yet"}
+              Last property: {newestImport ? formatDateTime(newestImport) : "No imports yet"}
             </div>
+            <div>Auto-refresh: every 15 minutes</div>
           </div>
         </header>
 
@@ -225,7 +148,7 @@ export function DealDashboard({
           <input
             className="search"
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search address, county, parcel, zoning"
+            placeholder="Search address or county"
             value={query}
           />
           <div className="actions">
@@ -238,21 +161,13 @@ export function DealDashboard({
             >
               <RefreshCcw size={17} />
             </button>
-            <button
-              className="import-button"
-              disabled={importDisabled}
-              onClick={runImport}
-              type="button"
-            >
-              {cooldownRemaining > 0
-                ? `Run import (${Math.ceil(cooldownRemaining / 1000)}s)`
-                : "Run import"}
-            </button>
           </div>
         </div>
 
         {error ? <div className="empty-state">{error}</div> : null}
-        <div className="import-status">{importStatus}</div>
+        <div className="import-status">
+          New leads are added by POSTing to /api/import. This view refreshes automatically every 15 minutes.
+        </div>
 
         {filtered.length === 0 ? (
           <div className="empty-state">No properties in this tab.</div>
@@ -262,11 +177,11 @@ export function DealDashboard({
               <thead>
                 <tr>
                   <th>Property</th>
-                  <th>Land</th>
+                  <th>Acreage</th>
                   <th>Price</th>
-                  <th>Zoning</th>
-                  <th>Source</th>
-                  <th>Imported</th>
+                  <th>County, State</th>
+                  <th>Subdivide Estimate</th>
+                  <th>Redfin Link</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -280,28 +195,26 @@ export function DealDashboard({
                           .filter(Boolean)
                           .join(", ")}
                       </span>
-                      {property.parcelId ? (
-                        <div className="subtle">Parcel: {property.parcelId}</div>
-                      ) : null}
                     </td>
                     <td>
                       {property.acres ? `${property.acres.toLocaleString()} acres` : "Unknown"}
-                      {property.county ? (
-                        <div className="subtle">{property.county} County</div>
-                      ) : null}
                     </td>
                     <td>{property.price ? currency.format(property.price) : "Unknown"}</td>
-                    <td>{property.zoning ? <span className="badge">{property.zoning}</span> : "Unknown"}</td>
+                    <td>{property.countyState || [property.county, property.state].filter(Boolean).join(", ") || "Unknown"}</td>
+                    <td>
+                      {property.subdivideEstimate
+                        ? currency.format(property.subdivideEstimate)
+                        : "Unknown"}
+                    </td>
                     <td>
                       {property.listingUrl ? (
                         <a href={property.listingUrl} rel="noreferrer" target="_blank">
-                          {property.source || "Listing"} <ExternalLink size={12} />
+                          Click Here <ExternalLink size={12} />
                         </a>
                       ) : (
-                        property.source || "Import"
+                        "Unavailable"
                       )}
                     </td>
-                    <td>{new Date(property.importedAt).toLocaleDateString()}</td>
                     <td>
                       <div className="actions">
                         <button
@@ -332,6 +245,9 @@ export function DealDashboard({
                           <Trash2 size={16} />
                         </button>
                       </div>
+                      <div className="action-date">
+                        Imported {formatDateTime(property.importedAt)}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -340,7 +256,12 @@ export function DealDashboard({
           </div>
         )}
       </section>
-      {toast ? <div className="toast success">{toast}</div> : null}
     </main>
   );
+}
+
+function formatDateTime(value: string) {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return dateTime.format(parsed);
 }
