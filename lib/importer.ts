@@ -20,14 +20,24 @@ export async function triggerActivePiecesImport() {
 
   const responseText = await response.text();
   const payload = parseWebhookResponse(responseText);
+  const extracted = extractIncomingRecords(payload);
 
   if (!response.ok) {
     throw new Error(`ActivePieces webhook failed with ${response.status}`);
   }
 
-  const normalized = extractIncomingRecords(payload)
+  const normalized = extracted
     .map(normalizeIncomingProperty)
     .filter((record) => record !== null);
+
+  const diagnostics = {
+    webhookStatus: response.status,
+    responseTextLength: responseText.length,
+    parsedPayload: payload !== null,
+    extractedRecords: extracted.length,
+    normalizedRecords: normalized.length,
+    payloadKeys: getPayloadKeys(payload),
+  };
 
   if (normalized.length === 0) {
     return {
@@ -35,6 +45,7 @@ export async function triggerActivePiecesImport() {
       skippedDuplicates: 0,
       records: [],
       webhookReturnedRecords: false,
+      diagnostics,
     };
   }
 
@@ -42,6 +53,7 @@ export async function triggerActivePiecesImport() {
   return {
     ...result,
     webhookReturnedRecords: true,
+    diagnostics,
   };
 }
 
@@ -57,4 +69,9 @@ function parseWebhookResponse(responseText: string) {
   } catch {
     return null;
   }
+}
+
+function getPayloadKeys(payload: unknown) {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return [];
+  return Object.keys(payload);
 }
