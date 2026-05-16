@@ -33,6 +33,7 @@ export function DealDashboard({
   const [query, setQuery] = useState("");
   const [error, setError] = useState("");
   const [toast, setToast] = useState("");
+  const [importStatus, setImportStatus] = useState("Ready to import.");
   const [cooldownUntil, setCooldownUntil] = useState(0);
   const [now, setNow] = useState(Date.now());
   const [isPending, startTransition] = useTransition();
@@ -93,6 +94,7 @@ export function DealDashboard({
   async function runImport() {
     setError("");
     setToast("Import submitted");
+    setImportStatus("Import submitted. Waiting for ActivePieces response...");
     setCooldownUntil(Date.now() + 10000);
     startTransition(async () => {
       const response = await fetch("/api/manual-import", { method: "POST" });
@@ -112,6 +114,7 @@ export function DealDashboard({
 
       if (!response.ok) {
         setError(body?.error || "Manual import failed. Check the /api/manual-import function logs in Vercel.");
+        setImportStatus(`Import failed: ${body?.error || "No error details returned."}`);
         return;
       }
 
@@ -128,15 +131,22 @@ export function DealDashboard({
           body?.skippedDuplicates ?? 0
         } duplicates. Extracted ${body?.diagnostics?.extractedRecords ?? 0}.`,
       );
+      setImportStatus(
+        `Last import: added ${body?.added ?? 0}, skipped ${
+          body?.skippedDuplicates ?? 0
+        }, extracted ${body?.diagnostics?.extractedRecords ?? 0}, normalized ${
+          body?.diagnostics?.normalizedRecords ?? 0
+        }.`
+      );
 
       if ((body?.added ?? 0) === 0 && (body?.diagnostics?.extractedRecords ?? 0) === 0) {
-        setError(
-          `Import ran, but Vercel did not receive property rows back from ActivePieces. Parsed: ${
-            body?.diagnostics?.parsedPayload ? "yes" : "no"
-          }, response length: ${body?.diagnostics?.responseTextLength ?? 0}, keys: ${
-            body?.diagnostics?.payloadKeys?.join(", ") || "none"
-          }.` ,
-        );
+        const diagnosticMessage = `Import ran, but Vercel did not receive property rows back from ActivePieces. Parsed: ${
+          body?.diagnostics?.parsedPayload ? "yes" : "no"
+        }, response length: ${body?.diagnostics?.responseTextLength ?? 0}, keys: ${
+          body?.diagnostics?.payloadKeys?.join(", ") || "none"
+        }.`;
+        setError(diagnosticMessage);
+        setImportStatus(diagnosticMessage);
       }
     });
   }
@@ -228,6 +238,7 @@ export function DealDashboard({
         </div>
 
         {error ? <div className="empty-state">{error}</div> : null}
+        <div className="import-status">{importStatus}</div>
 
         {filtered.length === 0 ? (
           <div className="empty-state">No properties in this tab.</div>
