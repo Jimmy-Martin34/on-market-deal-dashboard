@@ -109,6 +109,7 @@ export function DealDashboard({
           parsedPayload?: boolean;
           responseTextLength?: number;
           payloadKeys?: string[];
+          extractedKeys?: string[][];
         };
       } | null;
 
@@ -147,6 +148,14 @@ export function DealDashboard({
         }.`;
         setError(diagnosticMessage);
         setImportStatus(diagnosticMessage);
+      }
+
+      if (
+        (body?.diagnostics?.extractedRecords ?? 0) > 0 &&
+        (body?.diagnostics?.normalizedRecords ?? 0) === 0
+      ) {
+        const firstKeys = body?.diagnostics?.extractedKeys?.[0]?.join(", ") || "none";
+        setError(`Import found data, but it did not look like property rows. First extracted keys: ${firstKeys}.`);
       }
     });
   }
