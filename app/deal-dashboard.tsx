@@ -72,7 +72,13 @@ export function DealDashboard({
     );
   }, [properties]);
 
-  const newestImport = properties[0]?.importedAt;
+  const lastSevenDaysCount = useMemo(() => {
+    const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    return properties.filter((property) => {
+      const importedAt = new Date(property.importedAt).getTime();
+      return Number.isFinite(importedAt) && importedAt >= sevenDaysAgo;
+    }).length;
+  }, [properties]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -120,11 +126,7 @@ export function DealDashboard({
           </div>
           <div className="sync-meta">
             <div>{properties.length} total properties</div>
-            <div>Live webhook mode</div>
-            <div>
-              Last property: {newestImport ? formatDateTime(newestImport) : "No imports yet"}
-            </div>
-            <div>Auto-refresh: every 15 minutes</div>
+            <div>Last 7 days: {lastSevenDaysCount}</div>
           </div>
         </header>
 
@@ -165,9 +167,6 @@ export function DealDashboard({
         </div>
 
         {error ? <div className="empty-state">{error}</div> : null}
-        <div className="import-status">
-          New leads are added by POSTing to /api/import. This view refreshes automatically every 15 minutes.
-        </div>
 
         {filtered.length === 0 ? (
           <div className="empty-state">No properties in this tab.</div>
