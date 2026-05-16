@@ -9,8 +9,10 @@ export type PropertyRecord = {
   state: string;
   zip: string;
   county?: string;
+  countyState?: string;
   acres?: number;
   price?: number;
+  subdivideEstimate?: number;
   zoning?: string;
   parcelId?: string;
   listingUrl?: string;
