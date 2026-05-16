@@ -6,7 +6,6 @@ export async function triggerActivePiecesImport() {
   if (!webhookUrl) {
     throw new Error("ACTIVEPIECES_WEBHOOK_URL is not configured");
   }
-
   const response = await fetch(webhookUrl, {
     method: "POST",
     headers: {
@@ -19,8 +18,8 @@ export async function triggerActivePiecesImport() {
     }),
   });
 
-  const contentType = response.headers.get("content-type") || "";
-  const payload = contentType.includes("application/json") ? await response.json() : null;
+  const responseText = await response.text();
+  const payload = parseWebhookResponse(responseText);
 
   if (!response.ok) {
     throw new Error(`ActivePieces webhook failed with ${response.status}`);
@@ -48,4 +47,14 @@ export async function triggerActivePiecesImport() {
 
 export async function triggerManualImport() {
   return triggerActivePiecesImport();
+}
+
+function parseWebhookResponse(responseText: string) {
+  if (!responseText.trim()) return null;
+
+  try {
+    return JSON.parse(responseText) as unknown;
+  } catch {
+    return null;
+  }
 }
