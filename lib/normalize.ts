@@ -43,23 +43,30 @@ function fingerprintFor(record: {
 }
 
 export function extractIncomingRecords(payload: unknown): IncomingProperty[] {
-  if (Array.isArray(payload)) return payload.filter(isObject);
-  if (!isObject(payload)) return [];
+  const unwrapped = unwrapPayload(payload);
+
+  if (Array.isArray(unwrapped)) return unwrapped.filter(isObject);
+  if (!isObject(unwrapped)) return [];
 
   const candidates = [
-    payload.body,
-    payload.properties,
-    payload.records,
-    payload.data,
-    payload.items,
-    payload.listings,
+    unwrapped.body,
+    unwrapped.properties,
+    unwrapped.records,
+    unwrapped.data,
+    unwrapped.items,
+    unwrapped.listings,
   ];
 
   for (const candidate of candidates) {
-    if (Array.isArray(candidate)) return candidate.filter(isObject);
+    const nested = unwrapPayload(candidate);
+    if (Array.isArray(nested)) return nested.filter(isObject);
+    if (isObject(nested)) {
+      const nestedRecords = extractIncomingRecords(nested);
+      if (nestedRecords.length > 0 && nestedRecords[0] !== nested) return nestedRecords;
+    }
   }
 
-  return [payload];
+  return [unwrapped];
 }
 
 export function normalizeIncomingProperty(raw: IncomingProperty): PropertyRecord | null {
@@ -149,6 +156,25 @@ export function normalizeIncomingProperty(raw: IncomingProperty): PropertyRecord
 
 function isObject(value: unknown): value is IncomingProperty {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function unwrapPayload(value: unknown): unknown {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return value;
+    try {
+      return unwrapPayload(JSON.parse(trimmed) as unknown);
+    } catch {
+      return value;
+    }
+  }
+
+  if (!isObject(value)) return value;
+
+  const body = value.body;
+  if (typeof body === "string" || Array.isArray(body)) return unwrapPayload(body);
+
+  return value;
 }
 
 function parseFullAddress(value: string) {
