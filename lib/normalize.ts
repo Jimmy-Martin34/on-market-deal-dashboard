@@ -70,6 +70,17 @@ export function normalizeIncomingProperty(raw: IncomingProperty): PropertyRecord
   const listingUrl =
     pick(raw, ["listingUrl", "listing_url", "redfinLink", "redfin_url", "url", "link"]) ||
     undefined;
+  const landPortalLink =
+    pick(raw, [
+      "landPortalLink",
+      "land_portal_link",
+      "landPortalUrl",
+      "land_portal_url",
+      "landIdLink",
+      "land_id_link",
+      "landLink",
+      "land_link",
+    ]) || undefined;
 
   if (!address && !parcelId && !listingUrl) return null;
 
@@ -81,6 +92,7 @@ export function normalizeIncomingProperty(raw: IncomingProperty): PropertyRecord
     zip,
     parcelId,
     listingUrl,
+    landPortalLink,
   };
 
   return {
