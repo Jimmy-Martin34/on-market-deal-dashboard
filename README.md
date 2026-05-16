@@ -33,15 +33,27 @@ Use the Upstash Redis integration from the Vercel Marketplace for durable produc
 
 ## ActivePieces Payloads
 
-The cron route triggers the ActivePieces webhook. If that webhook returns JSON records, the app imports them directly.
+The cron route and the `Run import` button trigger the ActivePieces webhook. Many ActivePieces flows show the final records in the run output but return only `{}` to the original webhook caller. In that case, add a final HTTP step in ActivePieces that posts the records back into the dashboard.
 
-You can also configure ActivePieces to POST records to:
+Configure that final ActivePieces HTTP step as:
 
 ```text
-/api/import
+Method: POST
+URL: https://on-market-deal-dashboard.vercel.app/api/import
+Header: Content-Type: application/json
 ```
 
-Accepted payload shapes include an array directly or an object with `properties`, `records`, `data`, `items`, or `listings`.
+The body can be the property array directly, or the wrapper object:
+
+```json
+{
+  "status": 200,
+  "headers": {},
+  "body": []
+}
+```
+
+Accepted payload keys include `body`, `properties`, `records`, `data`, `items`, or `listings`.
 
 Deduplication prefers `parcelId`, then `listingUrl`, then normalized address/city/state/zip.
 
