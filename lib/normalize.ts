@@ -44,6 +44,11 @@ function fingerprintFor(record: {
 
 export function extractIncomingRecords(payload: unknown): IncomingProperty[] {
   const unwrapped = unwrapPayload(payload);
+  const propertyLikeRecords = collectPropertyLikeRecords(unwrapped);
+
+  if (propertyLikeRecords.length > 0) {
+    return dedupeByReference(propertyLikeRecords);
+  }
 
   if (Array.isArray(unwrapped)) {
     const nested = unwrapped.flatMap((item) => {
@@ -52,11 +57,14 @@ export function extractIncomingRecords(payload: unknown): IncomingProperty[] {
     });
     return nested.filter(isObject);
   }
-
   if (!isObject(unwrapped)) return [];
 
   const candidates = [
     unwrapped.body,
+    unwrapped.Body,
+    unwrapped.result,
+    unwrapped.response,
+    unwrapped.output,
     unwrapped.properties,
     unwrapped.records,
     unwrapped.data,
@@ -168,6 +176,10 @@ function isObject(value: unknown): value is IncomingProperty {
 function hasNestedRecords(value: IncomingProperty) {
   return [
     value.body,
+    value.Body,
+    value.result,
+    value.response,
+    value.output,
     value.properties,
     value.records,
     value.data,
@@ -192,7 +204,69 @@ function unwrapPayload(value: unknown): unknown {
   const body = value.body;
   if (typeof body === "string" || Array.isArray(body)) return unwrapPayload(body);
 
+  const upperBody = value.Body;
+  if (typeof upperBody === "string" || Array.isArray(upperBody)) return unwrapPayload(upperBody);
+
   return value;
+}
+
+function collectPropertyLikeRecords(value: unknown): IncomingProperty[] {
+  const parsed = unwrapPayload(value);
+
+  if (Array.isArray(parsed)) {
+    return parsed.flatMap((item) => collectPropertyLikeRecords(item));
+  }
+
+  if (!isObject(parsed)) return [];
+  if (isPropertyLikeRecord(parsed)) return [parsed];
+
+  return Object.values(parsed).flatMap((item) => collectPropertyLikeRecords(item));
+}
+
+function isPropertyLikeRecord(value: IncomingProperty) {
+  const requiredAnchor = [
+    "address",
+    "Address",
+    "propertyAddress",
+    "streetAddress",
+    "propertyId",
+    "property_id",
+    "parcelId",
+    "parcel_id",
+    "propertyLink",
+    "property_link",
+    "listingUrl",
+    "listing_url",
+    "redfinLink",
+  ].some((key) => text(value[key]));
+
+  if (!requiredAnchor) return false;
+
+  const markerScore = [
+    "address",
+    "Address",
+    "propertyId",
+    "property_id",
+    "parcelId",
+    "propertyLink",
+    "property_link",
+    "listingUrl",
+    "price",
+    "listPrice",
+    "acreage",
+    "acres",
+    "zipCode",
+    "zipcode",
+    "zip",
+    "landVuLink",
+    "landPortalLink",
+  ].filter((key) => text(value[key]) || typeof value[key] === "number").length;
+
+  return markerScore >= 2;
+}
+
+function dedupeByReference(records: IncomingProperty[]) {
+  return records.filter((record, index) => records.indexOf(record) === index);
 }
 
 function parseFullAddress(value: string) {
