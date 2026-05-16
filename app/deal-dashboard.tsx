@@ -101,6 +101,13 @@ export function DealDashboard({
         skippedDuplicates?: number;
         records?: PropertyRecord[];
         error?: string;
+        diagnostics?: {
+          extractedRecords?: number;
+          normalizedRecords?: number;
+          parsedPayload?: boolean;
+          responseTextLength?: number;
+          payloadKeys?: string[];
+        };
       } | null;
 
       if (!response.ok) {
@@ -119,8 +126,18 @@ export function DealDashboard({
       setToast(
         `Import submitted. Added ${body?.added ?? 0}, skipped ${
           body?.skippedDuplicates ?? 0
-        } duplicates.`,
+        } duplicates. Extracted ${body?.diagnostics?.extractedRecords ?? 0}.`,
       );
+
+      if ((body?.added ?? 0) === 0 && (body?.diagnostics?.extractedRecords ?? 0) === 0) {
+        setError(
+          `Import ran, but Vercel did not receive property rows back from ActivePieces. Parsed: ${
+            body?.diagnostics?.parsedPayload ? "yes" : "no"
+          }, response length: ${body?.diagnostics?.responseTextLength ?? 0}, keys: ${
+            body?.diagnostics?.payloadKeys?.join(", ") || "none"
+          }.` ,
+        );
+      }
     });
   }
 
