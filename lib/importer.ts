@@ -45,3 +45,7 @@ export async function triggerActivePiecesImport() {
     webhookReturnedRecords: true,
   };
 }
+
+export async function triggerManualImport() {
+  return triggerActivePiecesImport();
+}
