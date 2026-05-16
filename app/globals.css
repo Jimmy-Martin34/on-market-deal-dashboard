@@ -253,6 +253,15 @@ th {
   color: var(--muted);
 }
 
+.import-status {
+  border-top: 1px solid var(--line);
+  background: #fbfcf9;
+  color: var(--muted);
+  padding: 10px 20px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
 .toast {
   position: fixed;
   right: 18px;
