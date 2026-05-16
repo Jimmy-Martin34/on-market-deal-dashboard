@@ -177,8 +177,8 @@ export function DealDashboard({
                 <tr>
                   <th>Property</th>
                   <th>Acreage</th>
-                  <th>Price</th>
-                  <th>County, State</th>
+                  <th>County</th>
+                  <th>State</th>
                   <th>Subdivide Estimate</th>
                   <th>Redfin Link</th>
                   <th>Actions</th>
@@ -198,8 +198,8 @@ export function DealDashboard({
                     <td>
                       {property.acres ? `${property.acres.toLocaleString()} acres` : "Unknown"}
                     </td>
-                    <td>{property.price ? currency.format(property.price) : "Unknown"}</td>
-                    <td>{property.countyState || [property.county, property.state].filter(Boolean).join(", ") || "Unknown"}</td>
+                    <td>{getCounty(property)}</td>
+                    <td>{getState(property)}</td>
                     <td>
                       {property.subdivideEstimate
                         ? currency.format(property.subdivideEstimate)
@@ -263,4 +263,12 @@ function formatDateTime(value: string) {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return value;
   return dateTime.format(parsed);
+}
+
+function getCounty(property: PropertyRecord) {
+  return property.county || property.countyState?.split(",")[0]?.trim() || "Unknown";
+}
+
+function getState(property: PropertyRecord) {
+  return property.state || property.countyState?.split(",")[1]?.trim() || "Unknown";
 }
