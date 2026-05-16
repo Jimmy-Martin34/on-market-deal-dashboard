@@ -45,7 +45,14 @@ function fingerprintFor(record: {
 export function extractIncomingRecords(payload: unknown): IncomingProperty[] {
   const unwrapped = unwrapPayload(payload);
 
-  if (Array.isArray(unwrapped)) return unwrapped.filter(isObject);
+  if (Array.isArray(unwrapped)) {
+    const nested = unwrapped.flatMap((item) => {
+      if (!isObject(item) || !hasNestedRecords(item)) return isObject(item) ? [item] : [];
+      return extractIncomingRecords(item);
+    });
+    return nested.filter(isObject);
+  }
+
   if (!isObject(unwrapped)) return [];
 
   const candidates = [
@@ -156,6 +163,17 @@ export function normalizeIncomingProperty(raw: IncomingProperty): PropertyRecord
 
 function isObject(value: unknown): value is IncomingProperty {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function hasNestedRecords(value: IncomingProperty) {
+  return [
+    value.body,
+    value.properties,
+    value.records,
+    value.data,
+    value.items,
+    value.listings,
+  ].some((candidate) => Array.isArray(candidate) || typeof candidate === "string" || isObject(candidate));
 }
 
 function unwrapPayload(value: unknown): unknown {
