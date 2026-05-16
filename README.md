@@ -23,7 +23,7 @@ That is 6:00 a.m. and 12:00 p.m. fixed Eastern Standard Time, expressed in UTC. 
 
 ```bash
 CRON_SECRET="replace-with-a-long-random-secret"
-ACTIVEPIECES_WEBHOOK_URL="https://cloud.activepieces.com/api/v1/webhooks/zI8VXszh2ShSGw3W429wx"
+ACTIVEPIECES_WEBHOOK_URL="replace-with-your-activepieces-webhook-url"
 CRM_WEBHOOK_URL=""
 UPSTASH_REDIS_REST_URL=""
 UPSTASH_REDIS_REST_TOKEN=""
