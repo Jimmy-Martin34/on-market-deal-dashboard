@@ -79,7 +79,7 @@ export function DealDashboard({
     startTransition(async () => {
       const response = await fetch("/api/manual-import", { method: "POST" });
       if (!response.ok) {
-        setError("Import failed. Check Vercel function logs.");
+        setError("Manual import failed. Check the /api/manual-import function logs in Vercel.");
         return;
       }
       await refreshProperties();
@@ -118,6 +118,7 @@ export function DealDashboard({
           </div>
           <div className="sync-meta">
             <div>{properties.length} total properties</div>
+            <div>Build: manual import enabled</div>
             <div>
               Last import:{" "}
               {newestImport ? new Date(newestImport).toLocaleString() : "No imports yet"}
