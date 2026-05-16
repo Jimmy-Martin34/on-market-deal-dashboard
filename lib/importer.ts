@@ -37,6 +37,7 @@ export async function triggerActivePiecesImport() {
     extractedRecords: extracted.length,
     normalizedRecords: normalized.length,
     payloadKeys: getPayloadKeys(payload),
+    extractedKeys: extracted.slice(0, 3).map((record) => Object.keys(record)),
   };
 
   if (normalized.length === 0) {
