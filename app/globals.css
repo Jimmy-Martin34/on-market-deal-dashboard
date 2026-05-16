@@ -167,7 +167,7 @@ button {
 
 table {
   width: 100%;
-  min-width: 980px;
+  min-width: 1060px;
   border-collapse: collapse;
 }
 
@@ -214,6 +214,13 @@ th {
   display: flex;
   gap: 7px;
   flex-wrap: wrap;
+}
+
+.action-date {
+  margin-top: 7px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
 }
 
 .icon-button {
