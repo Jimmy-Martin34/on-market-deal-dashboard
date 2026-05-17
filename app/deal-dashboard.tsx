@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ExternalLink, RefreshCcw, Send, Trash2 } from "lucide-react";
+import { ExternalLink, RefreshCcw, Send, Trash2 } from "lucide-react";
 import type { FormEvent } from "react";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import type { PropertyRecord, PropertyStatus } from "@/lib/types";
@@ -14,7 +14,6 @@ type Tab = {
 const tabs: Tab[] = [
   { id: "needs_review", label: "Needs review" },
   { id: "sent_to_crm", label: "Sent to CRM" },
-  { id: "completed", label: "Completed", className: "completed" },
   { id: "discarded", label: "Discarded", className: "discarded" },
 ];
 
@@ -235,6 +234,7 @@ export function DealDashboard({
                   <th>Acreage</th>
                   <th>County</th>
                   <th>State</th>
+                  <th>List Price</th>
                   <th>Subdivide Estimate</th>
                   <th>Redfin Link</th>
                   <th>Actions</th>
@@ -256,6 +256,9 @@ export function DealDashboard({
                     </td>
                     <td>{getCounty(property)}</td>
                     <td>{getState(property)}</td>
+                    <td>
+                      {property.price ? currency.format(property.price) : "Unknown"}
+                    </td>
                     <td>
                       {property.subdivideEstimate
                         ? currency.format(property.subdivideEstimate)
@@ -280,15 +283,6 @@ export function DealDashboard({
                           type="button"
                         >
                           <Send size={16} />
-                        </button>
-                        <button
-                          className="icon-button blue"
-                          disabled={isPending}
-                          onClick={() => act(property.id, "completed")}
-                          title="Complete"
-                          type="button"
-                        >
-                          <Check size={17} />
                         </button>
                         <button
                           className="icon-button danger"
