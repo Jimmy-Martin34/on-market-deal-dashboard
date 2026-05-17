@@ -46,7 +46,10 @@ export function DealDashboard({
     agentName: "",
     agentPhone: "",
     landPortalLink: "",
+    parcelId: "",
   });
+  const [crmError, setCrmError] = useState("");
+  const [isSendingCrm, setIsSendingCrm] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const filtered = useMemo(() => {
@@ -103,19 +106,29 @@ export function DealDashboard({
 
   function openCrmForm(property: PropertyRecord) {
     setError("");
+    setCrmError("");
     setCrmProperty(property);
     setCrmForm({
       agentName: property.agentName || "",
       agentPhone: property.agentPhone || "",
       landPortalLink: property.landPortalLink || "",
+      parcelId: property.parcelId || "",
     });
   }
 
   async function submitCrmForm(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!crmProperty) return;
-    const sent = await sendAction(crmProperty.id, "send_to_crm", crmForm);
-    if (sent) setCrmProperty(null);
+    setCrmError("");
+    setIsSendingCrm(true);
+    const sent = await sendAction(crmProperty.id, "send_to_crm", crmForm, {
+      showModalError: true,
+    });
+    setIsSendingCrm(false);
+    if (sent) {
+      setCrmProperty(null);
+      setCrmError("");
+    }
   }
 
   function act(
@@ -132,6 +145,7 @@ export function DealDashboard({
     id: string,
     action: "send_to_crm" | PropertyStatus,
     crmDetails?: typeof crmForm,
+    options?: { showModalError?: boolean },
   ) {
     setError("");
     const response = await fetch(`/api/properties/${id}/action`, {
@@ -142,7 +156,12 @@ export function DealDashboard({
 
     if (!response.ok) {
       const body = (await response.json()) as { error?: string };
-      setError(body.error || "Action failed.");
+      const message = body.error || "Action failed.";
+      if (options?.showModalError) {
+        setCrmError(message);
+      } else {
+        setError(message);
+      }
       return false;
     }
 
@@ -342,6 +361,17 @@ export function DealDashboard({
                 value={crmForm.landPortalLink}
               />
             </label>
+            <label>
+              Parcel ID
+              <input
+                onChange={(event) =>
+                  setCrmForm((current) => ({ ...current, parcelId: event.target.value }))
+                }
+                placeholder="Parcel number"
+                value={crmForm.parcelId}
+              />
+            </label>
+            {crmError ? <div className="modal-error">{crmError}</div> : null}
             <div className="modal-summary">
               <div>Agreement price: {crmProperty.price ? currency.format(crmProperty.price) : "Unknown"}</div>
               <div>Lead source: On Market Email list</div>
@@ -349,13 +379,14 @@ export function DealDashboard({
             <div className="modal-actions">
               <button
                 className="secondary-button"
+                disabled={isSendingCrm}
                 onClick={() => setCrmProperty(null)}
                 type="button"
               >
                 Cancel
               </button>
-              <button className="submit-button" disabled={isPending} type="submit">
-                Send to CRM
+              <button className="submit-button" disabled={isSendingCrm} type="submit">
+                {isSendingCrm ? "Sending..." : "Send to CRM"}
               </button>
             </div>
           </form>
