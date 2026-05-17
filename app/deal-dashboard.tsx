@@ -112,7 +112,7 @@ export function DealDashboard({
       agentName: property.agentName || "",
       agentPhone: property.agentPhone || "",
       landPortalLink: property.landPortalLink || "",
-      parcelId: property.parcelId || "",
+      parcelId: "",
     });
   }
 
