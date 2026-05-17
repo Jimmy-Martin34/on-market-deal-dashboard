@@ -1,6 +1,6 @@
 "use client";
 
-import { ExternalLink, RefreshCcw, Send, Trash2 } from "lucide-react";
+import { ExternalLink, RefreshCcw, Send, Trash2, Undo2 } from "lucide-react";
 import type { FormEvent } from "react";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import type { PropertyRecord, PropertyStatus } from "@/lib/types";
@@ -275,24 +275,39 @@ export function DealDashboard({
                     </td>
                     <td>
                       <div className="actions">
-                        <button
-                          className="icon-button primary"
-                          disabled={isPending}
-                          onClick={() => openCrmForm(property)}
-                          title="Send to CRM"
-                          type="button"
-                        >
-                          <Send size={16} />
-                        </button>
-                        <button
-                          className="icon-button danger"
-                          disabled={isPending}
-                          onClick={() => act(property.id, "discarded")}
-                          title="Discard"
-                          type="button"
-                        >
-                          <Trash2 size={16} />
-                        </button>
+                        {property.status === "needs_review" ? (
+                          <>
+                            <button
+                              className="icon-button primary"
+                              disabled={isPending}
+                              onClick={() => openCrmForm(property)}
+                              title="Send to CRM"
+                              type="button"
+                            >
+                              <Send size={16} />
+                            </button>
+                            <button
+                              className="icon-button danger"
+                              disabled={isPending}
+                              onClick={() => act(property.id, "discarded")}
+                              title="Discard"
+                              type="button"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </>
+                        ) : null}
+                        {property.status === "discarded" ? (
+                          <button
+                            className="icon-button blue"
+                            disabled={isPending}
+                            onClick={() => act(property.id, "needs_review")}
+                            title="Send back to Needs Review"
+                            type="button"
+                          >
+                            <Undo2 size={17} />
+                          </button>
+                        ) : null}
                       </div>
                       <div className="action-date">
                         Imported {formatDateTime(property.importedAt)}
