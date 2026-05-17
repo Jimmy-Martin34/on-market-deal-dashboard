@@ -19,6 +19,7 @@ export async function POST(
     agentName?: string;
     agentPhone?: string;
     landPortalLink?: string;
+    parcelId?: string;
   };
   const now = new Date().toISOString();
 
@@ -27,6 +28,7 @@ export async function POST(
       agentName: body.agentName?.trim() || "",
       agentPhone: body.agentPhone?.trim() || "",
       landPortalLink: body.landPortalLink?.trim() || "",
+      parcelId: body.parcelId?.trim() || "",
     };
     const sent = await sendToCrm(id, crmDetails);
     if (!sent.ok) {
@@ -62,7 +64,7 @@ export async function POST(
 
 async function sendToCrm(
   id: string,
-  details: { agentName: string; agentPhone: string; landPortalLink: string },
+  details: { agentName: string; agentPhone: string; landPortalLink: string; parcelId: string },
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const webhookUrl = process.env.CRM_WEBHOOK_URL;
   if (!webhookUrl) return { ok: false, error: "CRM_WEBHOOK_URL is not configured" };
@@ -74,6 +76,7 @@ async function sendToCrm(
     agentName: details.agentName || property.agentName,
     agentPhone: details.agentPhone || property.agentPhone,
     landPortalLink: details.landPortalLink || property.landPortalLink,
+    parcelId: details.parcelId || property.parcelId,
   };
 
   const response = await fetch(webhookUrl, {
@@ -83,7 +86,13 @@ async function sendToCrm(
   });
 
   if (!response.ok) {
-    return { ok: false, error: `CRM webhook failed with ${response.status}` };
+    const responseText = await response.text().catch(() => "");
+    return {
+      ok: false,
+      error: `CRM webhook failed with ${response.status}${
+        responseText ? `: ${responseText.slice(0, 300)}` : ""
+      }`,
+    };
   }
 
   return { ok: true };
@@ -134,6 +143,10 @@ function buildCrmPayload(property: PropertyRecord) {
       {
         id: 694,
         value: property.landPortalLink || "",
+      },
+      {
+        id: 749,
+        value: property.parcelId || "",
       },
     ],
   };
