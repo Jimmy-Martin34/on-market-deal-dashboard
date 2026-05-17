@@ -1,6 +1,7 @@
 "use client";
 
 import { Check, ExternalLink, RefreshCcw, Send, Trash2 } from "lucide-react";
+import type { FormEvent } from "react";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import type { PropertyRecord, PropertyStatus } from "@/lib/types";
 
@@ -40,6 +41,12 @@ export function DealDashboard({
   const [activeTab, setActiveTab] = useState<PropertyStatus>("needs_review");
   const [query, setQuery] = useState("");
   const [error, setError] = useState("");
+  const [crmProperty, setCrmProperty] = useState<PropertyRecord | null>(null);
+  const [crmForm, setCrmForm] = useState({
+    agentName: "",
+    agentPhone: "",
+    landPortalLink: "",
+  });
   const [isPending, startTransition] = useTransition();
 
   const filtered = useMemo(() => {
@@ -94,26 +101,56 @@ export function DealDashboard({
     setProperties(data.properties);
   }
 
-  async function act(id: string, action: "send_to_crm" | PropertyStatus) {
+  function openCrmForm(property: PropertyRecord) {
     setError("");
-    startTransition(async () => {
-      const response = await fetch(`/api/properties/${id}/action`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ action }),
-      });
-
-      if (!response.ok) {
-        const body = (await response.json()) as { error?: string };
-        setError(body.error || "Action failed.");
-        return;
-      }
-
-      const body = (await response.json()) as { property: PropertyRecord };
-      setProperties((current) =>
-        current.map((property) => (property.id === id ? body.property : property)),
-      );
+    setCrmProperty(property);
+    setCrmForm({
+      agentName: property.agentName || "",
+      agentPhone: property.agentPhone || "",
+      landPortalLink: property.landPortalLink || "",
     });
+  }
+
+  async function submitCrmForm(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!crmProperty) return;
+    const sent = await sendAction(crmProperty.id, "send_to_crm", crmForm);
+    if (sent) setCrmProperty(null);
+  }
+
+  function act(
+    id: string,
+    action: "send_to_crm" | PropertyStatus,
+    crmDetails?: typeof crmForm,
+  ) {
+    startTransition(() => {
+      void sendAction(id, action, crmDetails);
+    });
+  }
+
+  async function sendAction(
+    id: string,
+    action: "send_to_crm" | PropertyStatus,
+    crmDetails?: typeof crmForm,
+  ) {
+    setError("");
+    const response = await fetch(`/api/properties/${id}/action`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ action, ...crmDetails }),
+    });
+
+    if (!response.ok) {
+      const body = (await response.json()) as { error?: string };
+      setError(body.error || "Action failed.");
+      return false;
+    }
+
+    const body = (await response.json()) as { property: PropertyRecord };
+    setProperties((current) =>
+      current.map((property) => (property.id === id ? body.property : property)),
+    );
+    return true;
   }
 
   return (
@@ -219,7 +256,7 @@ export function DealDashboard({
                         <button
                           className="icon-button primary"
                           disabled={isPending}
-                          onClick={() => act(property.id, "send_to_crm")}
+                          onClick={() => openCrmForm(property)}
                           title="Send to CRM"
                           type="button"
                         >
@@ -255,6 +292,75 @@ export function DealDashboard({
           </div>
         )}
       </section>
+      {crmProperty ? (
+        <div className="modal-backdrop" role="presentation">
+          <form className="crm-modal" onSubmit={submitCrmForm}>
+            <div className="modal-header">
+              <div>
+                <h2>Send to CRM</h2>
+                <p>{buildDealTitle(crmProperty)}</p>
+              </div>
+              <button
+                className="modal-close"
+                onClick={() => setCrmProperty(null)}
+                type="button"
+              >
+                x
+              </button>
+            </div>
+            <label>
+              Agent name
+              <input
+                onChange={(event) =>
+                  setCrmForm((current) => ({ ...current, agentName: event.target.value }))
+                }
+                placeholder="Full agent name"
+                required
+                value={crmForm.agentName}
+              />
+            </label>
+            <label>
+              Agent phone number
+              <input
+                onChange={(event) =>
+                  setCrmForm((current) => ({ ...current, agentPhone: event.target.value }))
+                }
+                placeholder="Agent phone"
+                value={crmForm.agentPhone}
+              />
+            </label>
+            <label>
+              Land ID / Land portal link
+              <input
+                onChange={(event) =>
+                  setCrmForm((current) => ({
+                    ...current,
+                    landPortalLink: event.target.value,
+                  }))
+                }
+                placeholder="Land portal link"
+                value={crmForm.landPortalLink}
+              />
+            </label>
+            <div className="modal-summary">
+              <div>Agreement price: {crmProperty.price ? currency.format(crmProperty.price) : "Unknown"}</div>
+              <div>Lead source: On Market Email list</div>
+            </div>
+            <div className="modal-actions">
+              <button
+                className="secondary-button"
+                onClick={() => setCrmProperty(null)}
+                type="button"
+              >
+                Cancel
+              </button>
+              <button className="submit-button" disabled={isPending} type="submit">
+                Send to CRM
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : null}
     </main>
   );
 }
@@ -271,4 +377,13 @@ function getCounty(property: PropertyRecord) {
 
 function getState(property: PropertyRecord) {
   return property.state || property.countyState?.split(",")[1]?.trim() || "Unknown";
+}
+
+function buildDealTitle(property: PropertyRecord) {
+  const acreage = property.acres ? `${formatNumber(property.acres)} Acre` : "Unknown Acreage";
+  return `${acreage} / ${getCounty(property)}, ${getState(property)}`;
+}
+
+function formatNumber(value: number) {
+  return Number.isInteger(value) ? value.toString() : value.toFixed(2);
 }
