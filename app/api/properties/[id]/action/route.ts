@@ -118,7 +118,7 @@ function buildCrmPayload(property: PropertyRecord) {
       },
       {
         id: 685,
-        value: buildDealNotes(property),
+        value: "",
       },
       {
         id: 688,
@@ -148,6 +148,10 @@ function buildCrmPayload(property: PropertyRecord) {
         id: 749,
         value: property.parcelId || "",
       },
+      {
+        id: 750,
+        value: property.address || "",
+      },
     ],
   };
 }
@@ -157,26 +161,7 @@ function buildDealTitle(property: PropertyRecord) {
   const county = property.county || property.countyState?.split(",")[0]?.trim();
   const state = property.state || property.countyState?.split(",")[1]?.trim();
   const countyState = [county, state].filter(Boolean).join(", ");
-  return `${acreage} / ${countyState || "Unknown location"}`;
-}
-
-function buildDealNotes(property: PropertyRecord) {
-  const details = [
-    `Address: ${property.address}`,
-    `Location: ${[property.city, property.state, property.zip].filter(Boolean).join(", ")}`,
-    property.county ? `County: ${property.county}` : "",
-    property.countyState ? `County, State: ${property.countyState}` : "",
-    property.acres ? `Acreage: ${formatNumber(property.acres)}` : "",
-    property.price ? `List price: ${property.price}` : "",
-    property.subdivideEstimate ? `Subdivide estimate: ${property.subdivideEstimate}` : "",
-    property.zoning ? `Zoning: ${property.zoning}` : "",
-    property.parcelId ? `Parcel/Land ID: ${property.parcelId}` : "",
-    property.landPortalLink ? `Land portal link: ${property.landPortalLink}` : "",
-    property.listingUrl ? `On market link: ${property.listingUrl}` : "",
-    property.notes ? `Notes: ${property.notes}` : "",
-  ];
-
-  return details.filter(Boolean).join("\n");
+  return `OM ${acreage} / ${countyState || "Unknown location"}`;
 }
 
 function splitName(name: string) {
