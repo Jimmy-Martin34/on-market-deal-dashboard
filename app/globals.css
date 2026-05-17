@@ -363,6 +363,17 @@ th {
   padding-top: 13px;
 }
 
+.modal-error {
+  margin: 2px 0 13px;
+  border: 1px solid var(--red);
+  border-radius: 8px;
+  background: var(--red-soft);
+  color: var(--red);
+  padding: 10px 11px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
 .modal-actions {
   display: flex;
   justify-content: flex-end;
@@ -380,6 +391,11 @@ th {
   border: 1px solid var(--line);
   background: #fff;
   color: var(--ink);
+}
+
+.secondary-button:disabled {
+  color: var(--muted);
+  cursor: not-allowed;
 }
 
 .submit-button {
