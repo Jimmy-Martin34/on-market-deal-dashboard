@@ -124,6 +124,21 @@ export function normalizeIncomingProperty(raw: IncomingProperty): PropertyRecord
       "landLink",
       "land_link",
     ]) || undefined;
+  const photoUrl =
+    pick(raw, [
+      "photoUrl",
+      "photo_url",
+      "imageUrl",
+      "image_url",
+      "heroPhoto",
+      "hero_photo",
+      "heroPhotoUrl",
+      "hero_photo_url",
+      "thumbnailUrl",
+      "thumbnail_url",
+    ]) ||
+    extractPhotoUrlFromHtml(raw) ||
+    undefined;
 
   if (!address && !parcelId && !listingUrl) return null;
 
@@ -135,6 +150,7 @@ export function normalizeIncomingProperty(raw: IncomingProperty): PropertyRecord
     state: state || parsedCountyState.state || parsedAddress.state,
     zip: zip || parsedAddress.zip,
     parcelId,
+    photoUrl,
     listingUrl,
     landPortalLink,
   };
@@ -273,6 +289,8 @@ function isPropertyLikeRecord(value: IncomingProperty) {
     "zip",
     "landVuLink",
     "landPortalLink",
+    "photoUrl",
+    "imageUrl",
     "County, St",
     "subdivideEstimate",
   ].filter((key) => text(value[key]) || typeof value[key] === "number").length;
@@ -282,6 +300,35 @@ function isPropertyLikeRecord(value: IncomingProperty) {
 
 function dedupeByReference(records: IncomingProperty[]) {
   return records.filter((record, index) => records.indexOf(record) === index);
+}
+
+function extractPhotoUrlFromHtml(record: IncomingProperty) {
+  const htmlCandidates = [
+    text(record.html),
+    text(record.body),
+    isObject(record.message) ? text(record.message.html) : "",
+  ].filter(Boolean);
+
+  for (const html of htmlCandidates) {
+    const homePhotoMatch = html.match(
+      /<img\b(?=[^>]*\bclass=["'][^"']*\bhome-photo\b[^"']*["'])[^>]*\bsrc=["']([^"']+)["']/i,
+    );
+    const genericRedfinMatch = html.match(
+      /<img\b[^>]*\bsrc=["']([^"']*redfin\.com\/stingray\/do\/api-get-listing-hero-shot[^"']+)["']/i,
+    );
+    const url = homePhotoMatch?.[1] || genericRedfinMatch?.[1] || "";
+    if (url) return decodeHtmlUrl(url);
+  }
+
+  return "";
+}
+
+function decodeHtmlUrl(value: string) {
+  return value
+    .replace(/&amp;/g, "&")
+    .replace(/&#x2F;/g, "/")
+    .replace(/&#47;/g, "/")
+    .trim();
 }
 
 function parseCountyState(value: string) {
