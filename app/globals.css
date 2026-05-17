@@ -83,6 +83,25 @@ button {
   text-align: right;
 }
 
+.summary-filter {
+  display: grid;
+  gap: 5px;
+  margin-bottom: 7px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.summary-filter select {
+  min-height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0 10px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+}
+
 .tabs {
   display: flex;
   gap: 8px;
