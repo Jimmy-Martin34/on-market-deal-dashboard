@@ -11,6 +11,8 @@ type Tab = {
   className?: string;
 };
 
+type SummaryWindow = 7 | 30;
+
 const tabs: Tab[] = [
   { id: "needs_review", label: "Needs review" },
   { id: "sent_to_crm", label: "Sent to CRM" },
@@ -39,6 +41,7 @@ export function DealDashboard({
   const [properties, setProperties] = useState(initialProperties);
   const [activeTab, setActiveTab] = useState<PropertyStatus>("needs_review");
   const [query, setQuery] = useState("");
+  const [summaryWindow, setSummaryWindow] = useState<SummaryWindow>(7);
   const [error, setError] = useState("");
   const [crmProperty, setCrmProperty] = useState<PropertyRecord | null>(null);
   const [crmForm, setCrmForm] = useState({
@@ -81,13 +84,13 @@ export function DealDashboard({
     );
   }, [properties]);
 
-  const lastSevenDaysCount = useMemo(() => {
-    const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-    return properties.filter((property) => {
-      const importedAt = new Date(property.importedAt).getTime();
-      return Number.isFinite(importedAt) && importedAt >= sevenDaysAgo;
-    }).length;
-  }, [properties]);
+  const summaryStats = useMemo(() => {
+    const cutoff = Date.now() - summaryWindow * 24 * 60 * 60 * 1000;
+    return {
+      imported: countSince(properties, "importedAt", cutoff),
+      sentToCrm: countSince(properties, "sentToCrmAt", cutoff),
+    };
+  }, [properties, summaryWindow]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -180,8 +183,22 @@ export function DealDashboard({
             <p>New vacant land listings and possible subdivision opportunities.</p>
           </div>
           <div className="sync-meta">
-            <div>{properties.length} total properties</div>
-            <div>Last 7 days: {lastSevenDaysCount}</div>
+            <label className="summary-filter">
+              <span>Window</span>
+              <select
+                onChange={(event) =>
+                  setSummaryWindow(Number(event.target.value) as SummaryWindow)
+                }
+                value={summaryWindow}
+              >
+                <option value={7}>Last 7 days</option>
+                <option value={30}>Last 30 days</option>
+              </select>
+            </label>
+            <div>Dashboard: {summaryStats.imported}</div>
+            {activeTab === "sent_to_crm" ? (
+              <div>Sent to CRM: {summaryStats.sentToCrm}</div>
+            ) : null}
           </div>
         </header>
 
@@ -419,6 +436,19 @@ function formatDateTime(value: string) {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return value;
   return dateTime.format(parsed);
+}
+
+function countSince(
+  properties: PropertyRecord[],
+  dateKey: "importedAt" | "sentToCrmAt",
+  cutoff: number,
+) {
+  return properties.filter((property) => {
+    const value = property[dateKey];
+    if (!value) return false;
+    const timestamp = new Date(value).getTime();
+    return Number.isFinite(timestamp) && timestamp >= cutoff;
+  }).length;
 }
 
 function getCounty(property: PropertyRecord) {
