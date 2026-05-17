@@ -15,6 +15,7 @@ export type PropertyRecord = {
   subdivideEstimate?: number;
   zoning?: string;
   parcelId?: string;
+  photoUrl?: string;
   listingUrl?: string;
   landPortalLink?: string;
   agentName?: string;
