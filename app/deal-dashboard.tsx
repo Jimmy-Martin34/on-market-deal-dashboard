@@ -261,12 +261,27 @@ export function DealDashboard({
                 {filtered.map((property) => (
                   <tr key={property.id}>
                     <td className="property-cell">
-                      <strong>{property.address}</strong>
-                      <span className="subtle">
-                        {[property.city, property.state, property.zip]
-                          .filter(Boolean)
-                          .join(", ")}
-                      </span>
+                      <div className="property-main">
+                        {property.photoUrl ? (
+                          <img
+                            alt=""
+                            className="property-photo"
+                            loading="lazy"
+                            referrerPolicy="no-referrer"
+                            src={property.photoUrl}
+                          />
+                        ) : (
+                          <div className="property-photo placeholder" aria-hidden="true" />
+                        )}
+                        <div>
+                          <strong>{property.address}</strong>
+                          <span className="subtle">
+                            {[property.city, property.state, property.zip]
+                              .filter(Boolean)
+                              .join(", ")}
+                          </span>
+                        </div>
+                      </div>
                     </td>
                     <td>
                       {property.acres ? `${property.acres.toLocaleString()} acres` : "Unknown"}
