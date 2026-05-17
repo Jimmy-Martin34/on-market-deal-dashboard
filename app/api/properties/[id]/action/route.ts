@@ -158,10 +158,26 @@ function buildCrmPayload(property: PropertyRecord) {
 
 function buildDealTitle(property: PropertyRecord) {
   const acreage = property.acres ? `${formatNumber(property.acres)} Acre` : "Unknown Acreage";
-  const county = property.county || property.countyState?.split(",")[0]?.trim();
-  const state = property.state || property.countyState?.split(",")[1]?.trim();
+  const { county, state } = getCountyState(property);
   const countyState = [county, state].filter(Boolean).join(", ");
   return `OM ${acreage} / ${countyState || "Unknown location"}`;
+}
+
+function getCountyState(property: PropertyRecord) {
+  const parsedCountyState = parseCountyState(property.countyState);
+  return {
+    county: parsedCountyState.county || property.county || "",
+    state: parsedCountyState.state || property.state || "",
+  };
+}
+
+function parseCountyState(value?: string) {
+  const [county = "", state = ""] = (value || "")
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  return { county, state };
 }
 
 function splitName(name: string) {
