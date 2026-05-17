@@ -87,7 +87,14 @@ export function normalizeIncomingProperty(raw: IncomingProperty): PropertyRecord
   const city = pick(raw, ["city", "City"]);
   const state = pick(raw, ["state", "State"]);
   const zip = pick(raw, ["zip", "zipcode", "zipCode", "postalCode", "Zip"]);
-  const countyState = pick(raw, ["County, St", "countyState", "county_state", "countySt"]);
+  const countyState = pick(raw, [
+    "County, St",
+    "County, State",
+    "county, state",
+    "countyState",
+    "county_state",
+    "countySt",
+  ]);
   const parsedCountyState = parseCountyState(countyState);
   const parcelId =
     pick(raw, ["parcelId", "parcel_id", "propertyId", "property_id", "apn", "APN"]) ||
