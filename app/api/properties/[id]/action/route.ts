@@ -14,16 +14,29 @@ export async function POST(
   context: { params: Promise<{ id: string }> },
 ) {
   const { id } = await context.params;
-  const body = (await request.json()) as { action?: string };
+  const body = (await request.json()) as {
+    action?: string;
+    agentName?: string;
+    agentPhone?: string;
+    landPortalLink?: string;
+  };
   const now = new Date().toISOString();
 
   if (body.action === "send_to_crm") {
-    const sent = await sendToCrm(id);
+    const crmDetails = {
+      agentName: body.agentName?.trim() || "",
+      agentPhone: body.agentPhone?.trim() || "",
+      landPortalLink: body.landPortalLink?.trim() || "",
+    };
+    const sent = await sendToCrm(id, crmDetails);
     if (!sent.ok) {
       return NextResponse.json({ error: sent.error }, { status: 502 });
     }
 
-    const record = await updatePropertyStatus(id, "sent_to_crm", { sentToCrmAt: now });
+    const record = await updatePropertyStatus(id, "sent_to_crm", {
+      ...crmDetails,
+      sentToCrmAt: now,
+    });
     return record
       ? NextResponse.json({ property: record })
       : NextResponse.json({ error: "Property not found" }, { status: 404 });
@@ -47,17 +60,26 @@ export async function POST(
     : NextResponse.json({ error: "Property not found" }, { status: 404 });
 }
 
-async function sendToCrm(id: string): Promise<{ ok: true } | { ok: false; error: string }> {
+async function sendToCrm(
+  id: string,
+  details: { agentName: string; agentPhone: string; landPortalLink: string },
+): Promise<{ ok: true } | { ok: false; error: string }> {
   const webhookUrl = process.env.CRM_WEBHOOK_URL;
-  if (!webhookUrl) return { ok: true };
+  if (!webhookUrl) return { ok: false, error: "CRM_WEBHOOK_URL is not configured" };
 
   const property = (await getProperties()).find((record) => record.id === id);
   if (!property) return { ok: false, error: "Property not found" };
+  const hydratedProperty = {
+    ...property,
+    agentName: details.agentName || property.agentName,
+    agentPhone: details.agentPhone || property.agentPhone,
+    landPortalLink: details.landPortalLink || property.landPortalLink,
+  };
 
   const response = await fetch(webhookUrl, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify(buildCrmPayload(property)),
+    body: JSON.stringify(buildCrmPayload(hydratedProperty)),
   });
 
   if (!response.ok) {
@@ -107,7 +129,7 @@ function buildCrmPayload(property: PropertyRecord) {
       },
       {
         id: 693,
-        value: "On Market-email list.",
+        value: "On Market Email list",
       },
       {
         id: 694,
@@ -118,9 +140,11 @@ function buildCrmPayload(property: PropertyRecord) {
 }
 
 function buildDealTitle(property: PropertyRecord) {
-  const acreage = property.acres ? `${formatNumber(property.acres)} acre` : "Unknown acreage";
-  const countyState = [property.county, property.state].filter(Boolean).join(", ");
-  return `OM ${acreage} / ${countyState || "Unknown location"}`;
+  const acreage = property.acres ? `${formatNumber(property.acres)} Acre` : "Unknown Acreage";
+  const county = property.county || property.countyState?.split(",")[0]?.trim();
+  const state = property.state || property.countyState?.split(",")[1]?.trim();
+  const countyState = [county, state].filter(Boolean).join(", ");
+  return `${acreage} / ${countyState || "Unknown location"}`;
 }
 
 function buildDealNotes(property: PropertyRecord) {
@@ -128,8 +152,10 @@ function buildDealNotes(property: PropertyRecord) {
     `Address: ${property.address}`,
     `Location: ${[property.city, property.state, property.zip].filter(Boolean).join(", ")}`,
     property.county ? `County: ${property.county}` : "",
+    property.countyState ? `County, State: ${property.countyState}` : "",
     property.acres ? `Acreage: ${formatNumber(property.acres)}` : "",
     property.price ? `List price: ${property.price}` : "",
+    property.subdivideEstimate ? `Subdivide estimate: ${property.subdivideEstimate}` : "",
     property.zoning ? `Zoning: ${property.zoning}` : "",
     property.parcelId ? `Parcel/Land ID: ${property.parcelId}` : "",
     property.landPortalLink ? `Land portal link: ${property.landPortalLink}` : "",
