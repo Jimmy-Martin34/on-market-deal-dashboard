@@ -312,6 +312,16 @@ export function DealDashboard({
                       <div className="action-date">
                         Imported {formatDateTime(property.importedAt)}
                       </div>
+                      {property.status === "sent_to_crm" && property.sentToCrmAt ? (
+                        <div className="action-date">
+                          Sent to CRM {formatDateTime(property.sentToCrmAt)}
+                        </div>
+                      ) : null}
+                      {property.status === "discarded" && property.discardedAt ? (
+                        <div className="action-date">
+                          Discarded {formatDateTime(property.discardedAt)}
+                        </div>
+                      ) : null}
                     </td>
                   </tr>
                 ))}
