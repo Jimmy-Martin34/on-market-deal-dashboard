@@ -213,6 +213,30 @@ th {
   font-size: 14px;
 }
 
+.property-main {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  min-width: 280px;
+}
+
+.property-photo {
+  width: 92px;
+  aspect-ratio: 4 / 3;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  object-fit: cover;
+  background: #eef2ea;
+}
+
+.property-photo.placeholder {
+  display: block;
+  background:
+    linear-gradient(135deg, rgba(31, 143, 85, 0.12), rgba(37, 99, 235, 0.1)),
+    #eef2ea;
+}
+
 .subtle {
   color: var(--muted);
 }
