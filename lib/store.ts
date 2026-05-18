@@ -78,16 +78,24 @@ async function saveProperties(records: PropertyRecord[]) {
 
 export async function importProperties(incoming: PropertyRecord[]): Promise<ImportResult> {
   const existing = await getProperties();
-  const seen = new Set(existing.map((record) => record.fingerprint));
+  const existingByFingerprint = new Map(
+    existing.map((record) => [record.fingerprint, record]),
+  );
+  const seen = new Set(existingByFingerprint.keys());
   const fresh: PropertyRecord[] = [];
+  let changedExisting = false;
 
   for (const record of incoming) {
-    if (seen.has(record.fingerprint)) continue;
+    const duplicate = existingByFingerprint.get(record.fingerprint);
+    if (duplicate) {
+      changedExisting = mergeMissingImportFields(duplicate, record) || changedExisting;
+      continue;
+    }
     seen.add(record.fingerprint);
     fresh.push(record);
   }
 
-  if (fresh.length > 0) {
+  if (fresh.length > 0 || changedExisting) {
     await saveProperties([...fresh, ...existing]);
   }
 
@@ -96,6 +104,29 @@ export async function importProperties(incoming: PropertyRecord[]): Promise<Impo
     skippedDuplicates: incoming.length - fresh.length,
     records: fresh,
   };
+}
+
+function mergeMissingImportFields(existing: PropertyRecord, incoming: PropertyRecord) {
+  let changed = false;
+
+  for (const key of [
+    "photoUrl",
+    "listingUrl",
+    "landPortalLink",
+    "county",
+    "countyState",
+  ] satisfies (keyof PropertyRecord)[]) {
+    if (!existing[key] && incoming[key]) {
+      existing[key] = incoming[key] as never;
+      changed = true;
+    }
+  }
+
+  if (changed) {
+    existing.updatedAt = new Date().toISOString();
+  }
+
+  return changed;
 }
 
 export async function updatePropertyStatus(
