@@ -122,11 +122,27 @@ function mergeMissingImportFields(existing: PropertyRecord, incoming: PropertyRe
     }
   }
 
+  if (isLikelyImportTimezoneCorrection(existing.importedAt, incoming.importedAt)) {
+    existing.importedAt = incoming.importedAt;
+    changed = true;
+  }
+
   if (changed) {
     existing.updatedAt = new Date().toISOString();
   }
 
   return changed;
+}
+
+function isLikelyImportTimezoneCorrection(existingValue?: string, incomingValue?: string) {
+  if (!existingValue || !incomingValue || existingValue === incomingValue) return false;
+
+  const existingTime = new Date(existingValue).getTime();
+  const incomingTime = new Date(incomingValue).getTime();
+  if (!Number.isFinite(existingTime) || !Number.isFinite(incomingTime)) return false;
+
+  const hoursDifference = (incomingTime - existingTime) / (60 * 60 * 1000);
+  return hoursDifference === 4 || hoursDifference === 5;
 }
 
 export async function updatePropertyStatus(
