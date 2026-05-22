@@ -44,6 +44,7 @@ export function DealDashboard({
   const [summaryWindow, setSummaryWindow] = useState<SummaryWindow>(7);
   const [error, setError] = useState("");
   const [crmProperty, setCrmProperty] = useState<PropertyRecord | null>(null);
+  const [manualCrmOpen, setManualCrmOpen] = useState(false);
   const [crmForm, setCrmForm] = useState({
     agentName: "",
     agentPhone: "",
@@ -52,8 +53,18 @@ export function DealDashboard({
     parcelId: "",
     dealNotes: "",
   });
+  const [manualCrmForm, setManualCrmForm] = useState({
+    dealName: "",
+    agentName: "",
+    agentPhone: "",
+    acres: "",
+    purchasePrice: "",
+    dealNotes: "",
+  });
   const [crmError, setCrmError] = useState("");
+  const [manualCrmError, setManualCrmError] = useState("");
   const [isSendingCrm, setIsSendingCrm] = useState(false);
+  const [isSendingManualCrm, setIsSendingManualCrm] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const filtered = useMemo(() => {
@@ -122,6 +133,20 @@ export function DealDashboard({
     });
   }
 
+  function openManualCrmForm() {
+    setError("");
+    setManualCrmError("");
+    setManualCrmOpen(true);
+    setManualCrmForm({
+      dealName: "",
+      agentName: "",
+      agentPhone: "",
+      acres: "",
+      purchasePrice: "",
+      dealNotes: "",
+    });
+  }
+
   async function submitCrmForm(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!crmProperty) return;
@@ -135,6 +160,27 @@ export function DealDashboard({
       setCrmProperty(null);
       setCrmError("");
     }
+  }
+
+  async function submitManualCrmForm(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setManualCrmError("");
+    setIsSendingManualCrm(true);
+
+    const response = await fetch("/api/manual-crm", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(manualCrmForm),
+    });
+
+    setIsSendingManualCrm(false);
+    if (!response.ok) {
+      const body = (await response.json()) as { error?: string };
+      setManualCrmError(body.error || "Manual CRM send failed.");
+      return;
+    }
+
+    setManualCrmOpen(false);
   }
 
   function act(
@@ -200,6 +246,9 @@ export function DealDashboard({
               </select>
             </label>
             <div>Dashboard: {summaryStats.imported}</div>
+            <button className="manual-link" onClick={openManualCrmForm} type="button">
+              Manual
+            </button>
             {activeTab === "sent_to_crm" ? (
               <div>Sent to CRM: {summaryStats.sentToCrm}</div>
             ) : null}
@@ -466,6 +515,123 @@ export function DealDashboard({
               </button>
               <button className="submit-button" disabled={isSendingCrm} type="submit">
                 {isSendingCrm ? "Sending..." : "Send to CRM"}
+              </button>
+            </div>
+          </form>
+        </div>
+      ) : null}
+      {manualCrmOpen ? (
+        <div className="modal-backdrop" role="presentation">
+          <form className="crm-modal" onSubmit={submitManualCrmForm}>
+            <div className="modal-header">
+              <div>
+                <h2>Manual CRM</h2>
+                <p>Create a deal directly in the CRM.</p>
+              </div>
+              <button
+                className="modal-close"
+                onClick={() => setManualCrmOpen(false)}
+                type="button"
+              >
+                x
+              </button>
+            </div>
+            <label>
+              Deal name
+              <input
+                onChange={(event) =>
+                  setManualCrmForm((current) => ({
+                    ...current,
+                    dealName: event.target.value,
+                  }))
+                }
+                placeholder="Deal name"
+                required
+                value={manualCrmForm.dealName}
+              />
+            </label>
+            <label>
+              Agent name
+              <input
+                onChange={(event) =>
+                  setManualCrmForm((current) => ({
+                    ...current,
+                    agentName: event.target.value,
+                  }))
+                }
+                placeholder="Full agent name"
+                required
+                value={manualCrmForm.agentName}
+              />
+            </label>
+            <label>
+              Agent number
+              <input
+                onChange={(event) =>
+                  setManualCrmForm((current) => ({
+                    ...current,
+                    agentPhone: event.target.value,
+                  }))
+                }
+                placeholder="Agent number"
+                value={manualCrmForm.agentPhone}
+              />
+            </label>
+            <label>
+              Acreage
+              <input
+                min="0"
+                onChange={(event) =>
+                  setManualCrmForm((current) => ({ ...current, acres: event.target.value }))
+                }
+                placeholder="Acreage"
+                step="0.01"
+                type="number"
+                value={manualCrmForm.acres}
+              />
+            </label>
+            <label>
+              Purchase price
+              <input
+                min="0"
+                onChange={(event) =>
+                  setManualCrmForm((current) => ({
+                    ...current,
+                    purchasePrice: event.target.value,
+                  }))
+                }
+                placeholder="Purchase price"
+                step="1"
+                type="number"
+                value={manualCrmForm.purchasePrice}
+              />
+            </label>
+            <label>
+              Deal notes
+              <textarea
+                onChange={(event) =>
+                  setManualCrmForm((current) => ({
+                    ...current,
+                    dealNotes: event.target.value,
+                  }))
+                }
+                placeholder="Notes for this deal"
+                rows={4}
+                value={manualCrmForm.dealNotes}
+              />
+            </label>
+            {manualCrmError ? <div className="modal-error">{manualCrmError}</div> : null}
+            <div className="modal-actions">
+              <button
+                className="secondary-button"
+                disabled={isSendingManualCrm}
+                onClick={() => setManualCrmOpen(false)}
+                type="button"
+              >
+                Cancel
+              </button>
+              <button className="submit-button" disabled={isSendingManualCrm} type="submit">
+                {isSendingManualCrm ? "Sending..." : "Send to CRM"}
               </button>
             </div>
           </form>

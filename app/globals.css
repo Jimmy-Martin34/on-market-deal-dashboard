@@ -81,6 +81,9 @@ button {
 }
 
 .sync-meta {
+  display: grid;
+  justify-items: end;
+  gap: 4px;
   text-align: right;
 }
 
@@ -179,6 +182,17 @@ button {
 .import-button:disabled {
   background: #a6ada4;
   cursor: not-allowed;
+}
+
+.manual-link {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--blue);
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .table-wrap {
@@ -481,6 +495,7 @@ th {
   }
 
   .sync-meta {
+    justify-items: start;
     text-align: left;
   }
 }
