@@ -55,10 +55,12 @@ export function DealDashboard({
   });
   const [manualCrmForm, setManualCrmForm] = useState({
     dealName: "",
+    countyState: "",
     agentName: "",
     agentPhone: "",
     acres: "",
     purchasePrice: "",
+    onMarketLink: "",
     dealNotes: "",
   });
   const [crmError, setCrmError] = useState("");
@@ -139,10 +141,12 @@ export function DealDashboard({
     setManualCrmOpen(true);
     setManualCrmForm({
       dealName: "",
+      countyState: "",
       agentName: "",
       agentPhone: "",
       acres: "",
       purchasePrice: "",
+      onMarketLink: "",
       dealNotes: "",
     });
   }
@@ -551,6 +555,19 @@ export function DealDashboard({
               />
             </label>
             <label>
+              County, St
+              <input
+                onChange={(event) =>
+                  setManualCrmForm((current) => ({
+                    ...current,
+                    countyState: event.target.value,
+                  }))
+                }
+                placeholder="County, ST"
+                value={manualCrmForm.countyState}
+              />
+            </label>
+            <label>
               Agent name
               <input
                 onChange={(event) =>
@@ -604,6 +621,20 @@ export function DealDashboard({
                 step="1"
                 type="number"
                 value={manualCrmForm.purchasePrice}
+              />
+            </label>
+            <label>
+              On market link
+              <input
+                onChange={(event) =>
+                  setManualCrmForm((current) => ({
+                    ...current,
+                    onMarketLink: event.target.value,
+                  }))
+                }
+                placeholder="https://..."
+                type="url"
+                value={manualCrmForm.onMarketLink}
               />
             </label>
             <label>

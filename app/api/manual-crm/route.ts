@@ -2,10 +2,12 @@ import { NextResponse } from "next/server";
 
 type ManualCrmBody = {
   dealName?: string;
+  countyState?: string;
   agentName?: string;
   agentPhone?: string;
   acres?: string;
   purchasePrice?: string;
+  onMarketLink?: string;
   dealNotes?: string;
 };
 
@@ -13,10 +15,12 @@ export async function POST(request: Request) {
   const body = (await request.json()) as ManualCrmBody;
   const details = {
     dealName: body.dealName?.trim() || "",
+    countyState: body.countyState?.trim() || "",
     agentName: body.agentName?.trim() || "",
     agentPhone: body.agentPhone?.trim() || "",
     acres: body.acres?.trim() || "",
     purchasePrice: body.purchasePrice?.trim() || "",
+    onMarketLink: body.onMarketLink?.trim() || "",
     dealNotes: body.dealNotes?.trim() || "",
   };
 
@@ -75,7 +79,7 @@ function buildManualCrmPayload(details: Required<ManualCrmBody>) {
       },
       {
         id: 685,
-        value: buildDealNotes(details.acres, details.dealNotes),
+        value: buildDealNotes(details.countyState, details.acres, details.dealNotes),
       },
       {
         id: 688,
@@ -84,6 +88,10 @@ function buildManualCrmPayload(details: Required<ManualCrmBody>) {
       {
         id: 687,
         value: lastName,
+      },
+      {
+        id: 690,
+        value: details.onMarketLink,
       },
       {
         id: 691,
@@ -97,8 +105,14 @@ function buildManualCrmPayload(details: Required<ManualCrmBody>) {
   };
 }
 
-function buildDealNotes(acres: string, dealNotes: string) {
-  return [`Acreage: ${acres || "Unknown"}`, dealNotes].filter(Boolean).join("\n\n");
+function buildDealNotes(countyState: string, acres: string, dealNotes: string) {
+  return [
+    `County, St: ${countyState || "Unknown"}`,
+    `Acreage: ${acres || "Unknown"}`,
+    dealNotes,
+  ]
+    .filter(Boolean)
+    .join("\n\n");
 }
 
 function splitName(name: string) {
