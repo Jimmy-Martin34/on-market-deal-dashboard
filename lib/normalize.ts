@@ -2,6 +2,16 @@ import crypto from "node:crypto";
 import type { PropertyRecord } from "./types";
 
 type IncomingProperty = Record<string, unknown>;
+type DateParts = {
+  year: number;
+  month: number;
+  day: number;
+  hour: number;
+  minute: number;
+  second: number;
+};
+
+const IMPORT_TIME_ZONE = "America/New_York";
 
 function text(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
@@ -364,9 +374,122 @@ function parseCountyState(value: string) {
 
 function parseImportDate(value: string) {
   if (!value) return "";
-  const normalized = value.includes("T") ? value : value.replace(" ", "T");
+  const trimmed = value.trim();
+  const explicitTimeZone = /(?:z|[+-]\d{2}:?\d{2}|\b(?:UTC|GMT|EST|EDT)\b)$/i.test(trimmed);
+  if (!explicitTimeZone) {
+    const dateParts = parseNaiveDateParts(trimmed);
+    if (dateParts) return zonedDatePartsToUtc(dateParts, IMPORT_TIME_ZONE).toISOString();
+  }
+
+  const normalized = trimmed.includes("T") ? trimmed : trimmed.replace(" ", "T");
   const parsed = new Date(normalized);
   return Number.isNaN(parsed.getTime()) ? "" : parsed.toISOString();
+}
+
+function parseNaiveDateParts(value: string): DateParts | null {
+  const isoMatch = value.match(
+    /^(\d{4})-(\d{1,2})-(\d{1,2})(?:[ T](\d{1,2})(?::(\d{2}))?(?::(\d{2}))?\s*(AM|PM)?)?$/i,
+  );
+  if (isoMatch) {
+    return normalizeDateParts({
+      year: Number(isoMatch[1]),
+      month: Number(isoMatch[2]),
+      day: Number(isoMatch[3]),
+      hour: Number(isoMatch[4] || 0),
+      minute: Number(isoMatch[5] || 0),
+      second: Number(isoMatch[6] || 0),
+      meridiem: isoMatch[7],
+    });
+  }
+
+  const slashMatch = value.match(
+    /^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:[,\s]+(\d{1,2})(?::(\d{2}))?(?::(\d{2}))?\s*(AM|PM)?)?$/i,
+  );
+  if (slashMatch) {
+    return normalizeDateParts({
+      year: Number(slashMatch[3]),
+      month: Number(slashMatch[1]),
+      day: Number(slashMatch[2]),
+      hour: Number(slashMatch[4] || 0),
+      minute: Number(slashMatch[5] || 0),
+      second: Number(slashMatch[6] || 0),
+      meridiem: slashMatch[7],
+    });
+  }
+
+  return null;
+}
+
+function normalizeDateParts({
+  year,
+  month,
+  day,
+  hour,
+  minute,
+  second,
+  meridiem,
+}: DateParts & { meridiem?: string }): DateParts | null {
+  let normalizedHour = hour;
+  if (meridiem?.toUpperCase() === "PM" && normalizedHour < 12) normalizedHour += 12;
+  if (meridiem?.toUpperCase() === "AM" && normalizedHour === 12) normalizedHour = 0;
+
+  if (
+    month < 1 ||
+    month > 12 ||
+    day < 1 ||
+    day > 31 ||
+    normalizedHour < 0 ||
+    normalizedHour > 23 ||
+    minute < 0 ||
+    minute > 59 ||
+    second < 0 ||
+    second > 59
+  ) {
+    return null;
+  }
+
+  return { year, month, day, hour: normalizedHour, minute, second };
+}
+
+function zonedDatePartsToUtc(parts: DateParts, timeZone: string) {
+  const utcGuess = Date.UTC(
+    parts.year,
+    parts.month - 1,
+    parts.day,
+    parts.hour,
+    parts.minute,
+    parts.second,
+  );
+  const offset = getTimeZoneOffsetMinutes(new Date(utcGuess), timeZone);
+  return new Date(utcGuess - offset * 60 * 1000);
+}
+
+function getTimeZoneOffsetMinutes(date: Date, timeZone: string) {
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+  const parts = Object.fromEntries(
+    formatter
+      .formatToParts(date)
+      .filter((part) => part.type !== "literal")
+      .map((part) => [part.type, Number(part.value)]),
+  );
+  const zonedAsUtc = Date.UTC(
+    parts.year,
+    parts.month - 1,
+    parts.day,
+    parts.hour,
+    parts.minute,
+    parts.second,
+  );
+  return (zonedAsUtc - date.getTime()) / 60000;
 }
 
 function parseFullAddress(value: string) {
