@@ -47,8 +47,10 @@ export function DealDashboard({
   const [crmForm, setCrmForm] = useState({
     agentName: "",
     agentPhone: "",
+    acres: "",
     landPortalLink: "",
     parcelId: "",
+    dealNotes: "",
   });
   const [crmError, setCrmError] = useState("");
   const [isSendingCrm, setIsSendingCrm] = useState(false);
@@ -113,8 +115,10 @@ export function DealDashboard({
     setCrmForm({
       agentName: property.agentName || "",
       agentPhone: property.agentPhone || "",
+      acres: property.acres?.toString() || "",
       landPortalLink: property.landPortalLink || "",
       parcelId: "",
+      dealNotes: property.notes || "",
     });
   }
 
@@ -400,6 +404,19 @@ export function DealDashboard({
               />
             </label>
             <label>
+              Acreage
+              <input
+                min="0"
+                onChange={(event) =>
+                  setCrmForm((current) => ({ ...current, acres: event.target.value }))
+                }
+                placeholder="Acreage"
+                step="0.01"
+                type="number"
+                value={crmForm.acres}
+              />
+            </label>
+            <label>
               Land ID / Land portal link
               <input
                 onChange={(event) =>
@@ -420,6 +437,17 @@ export function DealDashboard({
                 }
                 placeholder="Parcel number"
                 value={crmForm.parcelId}
+              />
+            </label>
+            <label>
+              Deal notes
+              <textarea
+                onChange={(event) =>
+                  setCrmForm((current) => ({ ...current, dealNotes: event.target.value }))
+                }
+                placeholder="Notes for this deal"
+                rows={4}
+                value={crmForm.dealNotes}
               />
             </label>
             {crmError ? <div className="modal-error">{crmError}</div> : null}

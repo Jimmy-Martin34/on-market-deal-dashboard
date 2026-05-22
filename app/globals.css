@@ -35,7 +35,8 @@ body {
 }
 
 button,
-input {
+input,
+textarea {
   font: inherit;
 }
 
@@ -344,6 +345,8 @@ th {
 
 .crm-modal {
   width: min(520px, 100%);
+  max-height: calc(100vh - 36px);
+  overflow-y: auto;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #fff;
@@ -390,12 +393,19 @@ th {
   font-weight: 700;
 }
 
-.crm-modal input {
+.crm-modal input,
+.crm-modal textarea {
   min-height: 40px;
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 0 11px;
   color: var(--ink);
+}
+
+.crm-modal textarea {
+  min-height: 92px;
+  padding: 10px 11px;
+  resize: vertical;
 }
 
 .modal-summary {

@@ -18,8 +18,10 @@ export async function POST(
     action?: string;
     agentName?: string;
     agentPhone?: string;
+    acres?: string;
     landPortalLink?: string;
     parcelId?: string;
+    dealNotes?: string;
   };
   const now = new Date().toISOString();
 
@@ -27,16 +29,24 @@ export async function POST(
     const crmDetails = {
       agentName: body.agentName?.trim() || "",
       agentPhone: body.agentPhone?.trim() || "",
+      acres: body.acres?.trim() || "",
       landPortalLink: body.landPortalLink?.trim() || "",
       parcelId: body.parcelId?.trim() || "",
+      dealNotes: body.dealNotes?.trim() || "",
     };
     const sent = await sendToCrm(id, crmDetails);
     if (!sent.ok) {
       return NextResponse.json({ error: sent.error }, { status: 502 });
     }
 
+    const parsedAcres = parseAcreage(crmDetails.acres);
     const record = await updatePropertyStatus(id, "sent_to_crm", {
-      ...crmDetails,
+      agentName: crmDetails.agentName,
+      agentPhone: crmDetails.agentPhone,
+      ...(parsedAcres === undefined ? {} : { acres: parsedAcres }),
+      landPortalLink: crmDetails.landPortalLink,
+      parcelId: crmDetails.parcelId,
+      notes: crmDetails.dealNotes,
       sentToCrmAt: now,
     });
     return record
@@ -64,7 +74,14 @@ export async function POST(
 
 async function sendToCrm(
   id: string,
-  details: { agentName: string; agentPhone: string; landPortalLink: string; parcelId: string },
+  details: {
+    agentName: string;
+    agentPhone: string;
+    acres: string;
+    landPortalLink: string;
+    parcelId: string;
+    dealNotes: string;
+  },
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const webhookUrl = process.env.CRM_WEBHOOK_URL;
   if (!webhookUrl) return { ok: false, error: "CRM_WEBHOOK_URL is not configured" };
@@ -75,8 +92,10 @@ async function sendToCrm(
     ...property,
     agentName: details.agentName || property.agentName,
     agentPhone: details.agentPhone || property.agentPhone,
+    acres: parseAcreage(details.acres) ?? property.acres,
     landPortalLink: details.landPortalLink || property.landPortalLink,
     parcelId: details.parcelId || property.parcelId,
+    notes: details.dealNotes || property.notes,
   };
 
   const response = await fetch(webhookUrl, {
@@ -118,7 +137,7 @@ function buildCrmPayload(property: PropertyRecord) {
       },
       {
         id: 685,
-        value: "",
+        value: property.notes || "",
       },
       {
         id: 688,
@@ -188,6 +207,12 @@ function splitName(name: string) {
     firstName: parts[0],
     lastName: parts.slice(1).join(" "),
   };
+}
+
+function parseAcreage(value: string) {
+  if (!value) return undefined;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
 }
 
 function formatNumber(value: number) {
