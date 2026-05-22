@@ -8,6 +8,7 @@ type ManualCrmBody = {
   acres?: string;
   purchasePrice?: string;
   onMarketLink?: string;
+  landIdLink?: string;
   dealNotes?: string;
 };
 
@@ -21,6 +22,7 @@ export async function POST(request: Request) {
     acres: body.acres?.trim() || "",
     purchasePrice: body.purchasePrice?.trim() || "",
     onMarketLink: body.onMarketLink?.trim() || "",
+    landIdLink: body.landIdLink?.trim() || "",
     dealNotes: body.dealNotes?.trim() || "",
   };
 
@@ -92,6 +94,10 @@ function buildManualCrmPayload(details: Required<ManualCrmBody>) {
       {
         id: 690,
         value: details.onMarketLink,
+      },
+      {
+        id: 694,
+        value: details.landIdLink,
       },
       {
         id: 691,

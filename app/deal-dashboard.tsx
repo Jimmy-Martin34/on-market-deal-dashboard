@@ -61,6 +61,7 @@ export function DealDashboard({
     acres: "",
     purchasePrice: "",
     onMarketLink: "",
+    landIdLink: "",
     dealNotes: "",
   });
   const [crmError, setCrmError] = useState("");
@@ -147,6 +148,7 @@ export function DealDashboard({
       acres: "",
       purchasePrice: "",
       onMarketLink: "",
+      landIdLink: "",
       dealNotes: "",
     });
   }
@@ -635,6 +637,20 @@ export function DealDashboard({
                 placeholder="https://..."
                 type="url"
                 value={manualCrmForm.onMarketLink}
+              />
+            </label>
+            <label>
+              Land ID link
+              <input
+                onChange={(event) =>
+                  setManualCrmForm((current) => ({
+                    ...current,
+                    landIdLink: event.target.value,
+                  }))
+                }
+                placeholder="https://..."
+                type="url"
+                value={manualCrmForm.landIdLink}
               />
             </label>
             <label>
