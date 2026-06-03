@@ -113,14 +113,15 @@ function mergeMissingImportFields(existing: PropertyRecord, incoming: PropertyRe
     "photoUrl",
     "listingUrl",
     "landPortalLink",
-    "county",
-    "countyState",
   ] satisfies (keyof PropertyRecord)[]) {
     if (!existing[key] && incoming[key]) {
       existing[key] = incoming[key] as never;
       changed = true;
     }
   }
+
+  changed = mergeImportField(existing, incoming, "county") || changed;
+  changed = mergeImportField(existing, incoming, "countyState") || changed;
 
   if (isLikelyImportTimezoneCorrection(existing.importedAt, incoming.importedAt)) {
     existing.importedAt = incoming.importedAt;
@@ -132,6 +133,18 @@ function mergeMissingImportFields(existing: PropertyRecord, incoming: PropertyRe
   }
 
   return changed;
+}
+
+function mergeImportField(
+  existing: PropertyRecord,
+  incoming: PropertyRecord,
+  key: "county" | "countyState",
+) {
+  const incomingValue = incoming[key]?.trim();
+  if (!incomingValue || existing[key] === incomingValue) return false;
+
+  existing[key] = incomingValue;
+  return true;
 }
 
 function isLikelyImportTimezoneCorrection(existingValue?: string, incomingValue?: string) {
