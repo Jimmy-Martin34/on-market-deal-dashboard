@@ -201,7 +201,7 @@ button {
 
 table {
   width: 100%;
-  min-width: 1060px;
+  min-width: 1152px;
   border-collapse: collapse;
 }
 
@@ -230,14 +230,14 @@ th {
 
 .property-main {
   display: grid;
-  grid-template-columns: 92px minmax(0, 1fr);
+  grid-template-columns: 184px minmax(0, 1fr);
   align-items: center;
   gap: 12px;
-  min-width: 280px;
+  min-width: 380px;
 }
 
 .property-photo {
-  width: 92px;
+  width: 184px;
   aspect-ratio: 4 / 3;
   border: 1px solid var(--line);
   border-radius: 8px;
