@@ -120,6 +120,8 @@ async function sendToCrm(
 function buildCrmPayload(property: PropertyRecord) {
   const agentName = property.agentName || "";
   const { firstName, lastName } = splitName(agentName);
+  const { county, state } = getCountyState(property);
+  const countyState = [county, state].filter(Boolean).join(", ");
 
   return {
     fields: [
@@ -170,6 +172,14 @@ function buildCrmPayload(property: PropertyRecord) {
       {
         id: 750,
         value: property.address || "",
+      },
+      {
+        id: 751,
+        value: countyState,
+      },
+      {
+        id: 752,
+        value: property.acres ? formatNumber(property.acres) : "",
       },
     ],
   };

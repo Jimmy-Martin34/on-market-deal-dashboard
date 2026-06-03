@@ -81,7 +81,7 @@ function buildManualCrmPayload(details: Required<ManualCrmBody>) {
       },
       {
         id: 685,
-        value: buildDealNotes(details.countyState, details.acres, details.dealNotes),
+        value: details.dealNotes,
       },
       {
         id: 688,
@@ -107,18 +107,16 @@ function buildManualCrmPayload(details: Required<ManualCrmBody>) {
         id: 693,
         value: "Manual",
       },
+      {
+        id: 751,
+        value: details.countyState,
+      },
+      {
+        id: 752,
+        value: details.acres,
+      },
     ],
   };
-}
-
-function buildDealNotes(countyState: string, acres: string, dealNotes: string) {
-  return [
-    `County, St: ${countyState || "Unknown"}`,
-    `Acreage: ${acres || "Unknown"}`,
-    dealNotes,
-  ]
-    .filter(Boolean)
-    .join("\n\n");
 }
 
 function splitName(name: string) {
