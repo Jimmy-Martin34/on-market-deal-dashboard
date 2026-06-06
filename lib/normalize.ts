@@ -10,6 +10,10 @@ type DateParts = {
   minute: number;
   second: number;
 };
+type CountyState = {
+  county: string;
+  state: string;
+};
 
 const IMPORT_TIME_ZONE = "America/New_York";
 
@@ -90,7 +94,7 @@ export function extractIncomingRecords(payload: unknown): IncomingProperty[] {
   return [unwrapped];
 }
 
-export function normalizeIncomingProperty(raw: IncomingProperty): PropertyRecord | null {
+export async function normalizeIncomingProperty(raw: IncomingProperty): Promise<PropertyRecord | null> {
   const fullAddress = pick(raw, ["address", "streetAddress", "propertyAddress", "Address"]);
   const parsedAddress = parseFullAddress(fullAddress);
   const address = parsedAddress.address || fullAddress;
@@ -167,29 +171,41 @@ export function normalizeIncomingProperty(raw: IncomingProperty): PropertyRecord
 
   const now = new Date().toISOString();
   const importedAt = parseImportDate(pick(raw, ["date", "importedAt", "createdAt"])) || now;
+  const resolvedCity = city || parsedAddress.city;
+  const resolvedState = state || parsedCountyState.state || parsedAddress.state;
+  const resolvedZip = zip || parsedAddress.zip;
   const base = {
     address: address || "Address unavailable",
-    city: city || parsedAddress.city,
-    state: state || parsedCountyState.state || parsedAddress.state,
-    zip: zip || parsedAddress.zip,
+    city: resolvedCity,
+    state: resolvedState,
+    zip: resolvedZip,
     parcelId,
     photoUrl,
     listingUrl,
     landPortalLink,
   };
+  const incomingCountyState = {
+    county: pick(raw, ["county", "County"]) || parsedCountyState.county,
+    state: resolvedState,
+  };
+  const resolvedCountyState =
+    (await resolveCountyStateFromAddress({
+      address: base.address,
+      city: resolvedCity,
+      state: resolvedState,
+      zip: resolvedZip,
+    })) || (shouldTrustIncomingCounty(raw) ? incomingCountyState : { county: "", state: resolvedState });
+  const normalizedCountyState = resolvedCountyState.county
+    ? [resolvedCountyState.county, resolvedCountyState.state].filter(Boolean).join(", ")
+    : "";
 
   return {
     id: crypto.randomUUID(),
     fingerprint: fingerprintFor(base),
     status: "needs_review",
     ...base,
-    county: pick(raw, ["county", "County"]) || parsedCountyState.county || undefined,
-    countyState:
-      countyState ||
-      [pick(raw, ["county", "County"]) || parsedCountyState.county, state || parsedCountyState.state || parsedAddress.state]
-        .filter(Boolean)
-        .join(", ") ||
-      undefined,
+    county: resolvedCountyState.county || undefined,
+    countyState: normalizedCountyState || (shouldTrustIncomingCounty(raw) ? countyState : "") || undefined,
     acres: numberValue(raw.acres ?? raw.acreage ?? raw.lotAcres ?? raw.lot_size_acres),
     price: numberValue(raw.price ?? raw.listPrice ?? raw.askingPrice),
     subdivideEstimate: numberValue(raw.subdivideEstimate ?? raw.subdivide_estimate),
@@ -370,6 +386,88 @@ function parseCountyState(value: string) {
     county: parts[0] || "",
     state: parts[1] || "",
   };
+}
+
+function shouldTrustIncomingCounty(record: IncomingProperty) {
+  const source = text(record.source ?? record.Source).toLowerCase();
+  const listingUrl = pick(record, [
+    "listingUrl",
+    "listing_url",
+    "propertyUrl",
+    "property_url",
+    "propertyLink",
+    "property_link",
+    "redfinLink",
+    "redfin_url",
+    "url",
+    "link",
+  ]).toLowerCase();
+  const html = [
+    text(record.html),
+    text(record.body),
+    isObject(record.message) ? text(record.message.html) : "",
+  ]
+    .join(" ")
+    .toLowerCase();
+
+  return !(
+    source.includes("activepieces") ||
+    listingUrl.includes("redfin.com") ||
+    html.includes("redfin.com")
+  );
+}
+
+async function resolveCountyStateFromAddress({
+  address,
+  city,
+  state,
+  zip,
+}: {
+  address: string;
+  city: string;
+  state: string;
+  zip: string;
+}): Promise<CountyState | null> {
+  const candidates = [
+    [address, city, state, zip].filter(Boolean).join(", "),
+    [city, state, zip].filter(Boolean).join(", "),
+  ].filter(Boolean);
+
+  for (const candidate of candidates) {
+    const countyState = await fetchCensusCountyState(candidate);
+    if (countyState) return countyState;
+  }
+
+  return null;
+}
+
+async function fetchCensusCountyState(address: string): Promise<CountyState | null> {
+  const url = new URL("https://geocoding.geo.census.gov/geocoder/geographies/onelineaddress");
+  url.searchParams.set("address", address);
+  url.searchParams.set("benchmark", "Public_AR_Current");
+  url.searchParams.set("vintage", "Current_Current");
+  url.searchParams.set("format", "json");
+
+  try {
+    const response = await fetch(url, { signal: AbortSignal.timeout(3000) });
+    if (!response.ok) return null;
+    const body = (await response.json()) as {
+      result?: {
+        addressMatches?: {
+          geographies?: {
+            Counties?: { NAME?: string; STUSAB?: string }[];
+          };
+        }[];
+      };
+    };
+    const county = body.result?.addressMatches?.[0]?.geographies?.Counties?.[0];
+    const countyName = county?.NAME?.trim() || "";
+    const stateAbbreviation = county?.STUSAB?.trim() || "";
+    if (!countyName || !stateAbbreviation) return null;
+    return { county: countyName, state: stateAbbreviation };
+  } catch {
+    return null;
+  }
 }
 
 function parseImportDate(value: string) {

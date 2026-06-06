@@ -141,10 +141,47 @@ function mergeImportField(
   key: "county" | "countyState",
 ) {
   const incomingValue = incoming[key]?.trim();
-  if (!incomingValue || existing[key] === incomingValue) return false;
+  if (!incomingValue) {
+    if (!shouldClearStoredCounty(incoming) || !existing[key]) return false;
+    existing[key] = undefined;
+    return true;
+  }
+
+  if (existing[key] === incomingValue) return false;
 
   existing[key] = incomingValue;
   return true;
+}
+
+function shouldClearStoredCounty(incoming: PropertyRecord) {
+  const raw = incoming.raw;
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return false;
+
+  const record = raw as Record<string, unknown>;
+  const source = stringValue(record.source ?? record.Source).toLowerCase();
+  const listingUrl = stringValue(
+    record.listingUrl ??
+      record.listing_url ??
+      record.propertyUrl ??
+      record.property_url ??
+      record.propertyLink ??
+      record.property_link ??
+      record.redfinLink ??
+      record.redfin_url ??
+      record.url ??
+      record.link,
+  ).toLowerCase();
+  const body = stringValue(record.html ?? record.body).toLowerCase();
+
+  return (
+    source.includes("activepieces") ||
+    listingUrl.includes("redfin.com") ||
+    body.includes("redfin.com")
+  );
+}
+
+function stringValue(value: unknown) {
+  return typeof value === "string" ? value.trim() : "";
 }
 
 function isLikelyImportTimezoneCorrection(existingValue?: string, incomingValue?: string) {

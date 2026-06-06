@@ -1,5 +1,6 @@
 import { extractIncomingRecords, normalizeIncomingProperty } from "./normalize";
 import { importProperties } from "./store";
+import type { PropertyRecord } from "./types";
 
 export async function triggerActivePiecesImport() {
   const webhookUrl = process.env.ACTIVEPIECES_WEBHOOK_URL;
@@ -26,9 +27,9 @@ export async function triggerActivePiecesImport() {
     throw new Error(`ActivePieces webhook failed with ${response.status}`);
   }
 
-  const normalized = extracted
-    .map(normalizeIncomingProperty)
-    .filter((record) => record !== null);
+  const normalized = (await Promise.all(extracted.map(normalizeIncomingProperty))).filter(
+    (record): record is PropertyRecord => record !== null,
+  );
 
   const diagnostics = {
     webhookStatus: response.status,
