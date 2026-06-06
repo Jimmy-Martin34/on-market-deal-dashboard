@@ -46,6 +46,7 @@ export function DealDashboard({
   const [crmProperty, setCrmProperty] = useState<PropertyRecord | null>(null);
   const [manualCrmOpen, setManualCrmOpen] = useState(false);
   const [crmForm, setCrmForm] = useState({
+    dealName: "",
     agentName: "",
     agentPhone: "",
     acres: "",
@@ -127,6 +128,7 @@ export function DealDashboard({
     setCrmError("");
     setCrmProperty(property);
     setCrmForm({
+      dealName: buildCrmDealName(property),
       agentName: property.agentName || "",
       agentPhone: property.agentPhone || "",
       acres: property.acres?.toString() || "",
@@ -427,7 +429,7 @@ export function DealDashboard({
             <div className="modal-header">
               <div>
                 <h2>Send to CRM</h2>
-                <p>{buildDealTitle(crmProperty)}</p>
+                <p>{[crmProperty.address, crmProperty.city, crmProperty.state].filter(Boolean).join(", ")}</p>
               </div>
               <button
                 className="modal-close"
@@ -437,6 +439,17 @@ export function DealDashboard({
                 x
               </button>
             </div>
+            <label>
+              Deal name
+              <input
+                onChange={(event) =>
+                  setCrmForm((current) => ({ ...current, dealName: event.target.value }))
+                }
+                placeholder="Deal name"
+                required
+                value={crmForm.dealName}
+              />
+            </label>
             <label>
               Agent name
               <input
@@ -718,6 +731,10 @@ function getState(property: PropertyRecord) {
 function buildDealTitle(property: PropertyRecord) {
   const acreage = property.acres ? `${formatNumber(property.acres)} Acre` : "Unknown Acreage";
   return `${acreage} / ${getCounty(property)}, ${getState(property)}`;
+}
+
+function buildCrmDealName(property: PropertyRecord) {
+  return `OM ${buildDealTitle(property)}`;
 }
 
 function formatNumber(value: number) {

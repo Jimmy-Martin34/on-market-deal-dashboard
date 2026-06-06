@@ -16,6 +16,7 @@ export async function POST(
   const { id } = await context.params;
   const body = (await request.json()) as {
     action?: string;
+    dealName?: string;
     agentName?: string;
     agentPhone?: string;
     acres?: string;
@@ -27,6 +28,7 @@ export async function POST(
 
   if (body.action === "send_to_crm") {
     const crmDetails = {
+      dealName: body.dealName?.trim() || "",
       agentName: body.agentName?.trim() || "",
       agentPhone: body.agentPhone?.trim() || "",
       acres: body.acres?.trim() || "",
@@ -75,6 +77,7 @@ export async function POST(
 async function sendToCrm(
   id: string,
   details: {
+    dealName: string;
     agentName: string;
     agentPhone: string;
     acres: string;
@@ -101,7 +104,7 @@ async function sendToCrm(
   const response = await fetch(webhookUrl, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify(buildCrmPayload(hydratedProperty)),
+    body: JSON.stringify(buildCrmPayload(hydratedProperty, details.dealName)),
   });
 
   if (!response.ok) {
@@ -117,7 +120,7 @@ async function sendToCrm(
   return { ok: true };
 }
 
-function buildCrmPayload(property: PropertyRecord) {
+function buildCrmPayload(property: PropertyRecord, dealName = "") {
   const agentName = property.agentName || "";
   const { firstName, lastName } = splitName(agentName);
   const { county, state } = getCountyState(property);
@@ -127,7 +130,7 @@ function buildCrmPayload(property: PropertyRecord) {
     fields: [
       {
         id: 683,
-        value: buildDealTitle(property),
+        value: dealName || buildDealTitle(property),
       },
       {
         id: 686,
