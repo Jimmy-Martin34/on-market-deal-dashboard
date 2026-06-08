@@ -12,6 +12,7 @@ type Tab = {
 };
 
 type SummaryWindow = 7 | 30;
+type CrmSubmissionMode = "submit_to_comp" | "on_hold_60";
 
 const tabs: Tab[] = [
   { id: "needs_review", label: "Needs review" },
@@ -47,6 +48,7 @@ export function DealDashboard({
   const [manualCrmOpen, setManualCrmOpen] = useState(false);
   const [crmForm, setCrmForm] = useState({
     dealName: "",
+    submissionMode: "submit_to_comp" as CrmSubmissionMode,
     agentName: "",
     agentPhone: "",
     acres: "",
@@ -129,6 +131,7 @@ export function DealDashboard({
     setCrmProperty(property);
     setCrmForm({
       dealName: buildCrmDealName(property),
+      submissionMode: "submit_to_comp",
       agentName: property.agentName || "",
       agentPhone: property.agentPhone || "",
       acres: property.acres?.toString() || "",
@@ -431,6 +434,21 @@ export function DealDashboard({
                 <h2>Send to CRM</h2>
                 <p>{[crmProperty.address, crmProperty.city, crmProperty.state].filter(Boolean).join(", ")}</p>
               </div>
+              <label className="modal-mode">
+                <span>Destination</span>
+                <select
+                  onChange={(event) =>
+                    setCrmForm((current) => ({
+                      ...current,
+                      submissionMode: event.target.value as CrmSubmissionMode,
+                    }))
+                  }
+                  value={crmForm.submissionMode}
+                >
+                  <option value="submit_to_comp">Submit to Comp</option>
+                  <option value="on_hold_60">On Hold 60 Days</option>
+                </select>
+              </label>
               <button
                 className="modal-close"
                 onClick={() => setCrmProperty(null)}

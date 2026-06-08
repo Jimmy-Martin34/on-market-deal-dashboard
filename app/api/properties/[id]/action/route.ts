@@ -2,12 +2,16 @@ import { NextResponse } from "next/server";
 import { getProperties, updatePropertyStatus } from "@/lib/store";
 import type { PropertyRecord, PropertyStatus } from "@/lib/types";
 
+type CrmSubmissionMode = "submit_to_comp" | "on_hold_60";
+
 const allowedStatuses = new Set<PropertyStatus>([
   "needs_review",
   "sent_to_crm",
   "completed",
   "discarded",
 ]);
+const ON_HOLD_60_STAGE_ID = 18273412;
+const ON_HOLD_DAYS_FIELD_ID = 573;
 
 export async function POST(
   request: Request,
@@ -17,6 +21,7 @@ export async function POST(
   const body = (await request.json()) as {
     action?: string;
     dealName?: string;
+    submissionMode?: string;
     agentName?: string;
     agentPhone?: string;
     acres?: string;
@@ -27,8 +32,11 @@ export async function POST(
   const now = new Date().toISOString();
 
   if (body.action === "send_to_crm") {
+    const submissionMode: CrmSubmissionMode =
+      body.submissionMode === "on_hold_60" ? "on_hold_60" : "submit_to_comp";
     const crmDetails = {
       dealName: body.dealName?.trim() || "",
+      submissionMode,
       agentName: body.agentName?.trim() || "",
       agentPhone: body.agentPhone?.trim() || "",
       acres: body.acres?.trim() || "",
@@ -78,6 +86,7 @@ async function sendToCrm(
   id: string,
   details: {
     dealName: string;
+    submissionMode: CrmSubmissionMode;
     agentName: string;
     agentPhone: string;
     acres: string;
@@ -104,7 +113,12 @@ async function sendToCrm(
   const response = await fetch(webhookUrl, {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify(buildCrmPayload(hydratedProperty, details.dealName)),
+    body: JSON.stringify(
+      buildCrmPayload(hydratedProperty, {
+        dealName: details.dealName,
+        submissionMode: details.submissionMode,
+      }),
+    ),
   });
 
   if (!response.ok) {
@@ -120,71 +134,83 @@ async function sendToCrm(
   return { ok: true };
 }
 
-function buildCrmPayload(property: PropertyRecord, dealName = "") {
+function buildCrmPayload(
+  property: PropertyRecord,
+  options: { dealName?: string; submissionMode: CrmSubmissionMode },
+) {
   const agentName = property.agentName || "";
   const { firstName, lastName } = splitName(agentName);
   const { county, state } = getCountyState(property);
   const countyState = [county, state].filter(Boolean).join(", ");
+  const fields = [
+    {
+      id: 683,
+      value: options.dealName || buildDealTitle(property),
+    },
+    {
+      id: 686,
+      value: agentName,
+    },
+    {
+      id: 692,
+      value: property.agentPhone || "",
+    },
+    {
+      id: 685,
+      value: property.notes || "",
+    },
+    {
+      id: 688,
+      value: firstName,
+    },
+    {
+      id: 687,
+      value: lastName,
+    },
+    {
+      id: 690,
+      value: property.listingUrl || "",
+    },
+    {
+      id: 691,
+      value: property.price?.toString() || "",
+    },
+    {
+      id: 693,
+      value: "On Market Email list",
+    },
+    {
+      id: 694,
+      value: property.landPortalLink || "",
+    },
+    {
+      id: 749,
+      value: property.parcelId || "",
+    },
+    {
+      id: 750,
+      value: property.address || "",
+    },
+    {
+      id: 751,
+      value: countyState,
+    },
+    {
+      id: 752,
+      value: property.acres ? formatNumber(property.acres) : "",
+    },
+  ];
+
+  if (options.submissionMode === "on_hold_60") {
+    fields.push({
+      id: ON_HOLD_DAYS_FIELD_ID,
+      value: "60",
+    });
+  }
 
   return {
-    fields: [
-      {
-        id: 683,
-        value: dealName || buildDealTitle(property),
-      },
-      {
-        id: 686,
-        value: agentName,
-      },
-      {
-        id: 692,
-        value: property.agentPhone || "",
-      },
-      {
-        id: 685,
-        value: property.notes || "",
-      },
-      {
-        id: 688,
-        value: firstName,
-      },
-      {
-        id: 687,
-        value: lastName,
-      },
-      {
-        id: 690,
-        value: property.listingUrl || "",
-      },
-      {
-        id: 691,
-        value: property.price?.toString() || "",
-      },
-      {
-        id: 693,
-        value: "On Market Email list",
-      },
-      {
-        id: 694,
-        value: property.landPortalLink || "",
-      },
-      {
-        id: 749,
-        value: property.parcelId || "",
-      },
-      {
-        id: 750,
-        value: property.address || "",
-      },
-      {
-        id: 751,
-        value: countyState,
-      },
-      {
-        id: 752,
-        value: property.acres ? formatNumber(property.acres) : "",
-      },
-    ],
+    ...(options.submissionMode === "on_hold_60" ? { stageId: ON_HOLD_60_STAGE_ID } : {}),
+    fields,
   };
 }
 
